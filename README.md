@@ -2,15 +2,15 @@
 
 The primary custom plugin for the World of Zombies Minecraft server.
 
-## Plugin Version
+### Plugin Version
 
-### 1.1.2
+1.1.2
 
-## Server Version
+### Server Version
 
-### 1.16.5
+1.16.5
 
-## Compiled with Java 8
+### Compiled with Java 8
 
 ## Dependencies
 
