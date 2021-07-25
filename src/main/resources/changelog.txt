@@ -1,0 +1,56 @@
+1.1.2     7/24/21
+    - Overhauled command syntax - all commands are now:  /woz [command] [args]
+        - For example,  /wozreload  is now  /woz reload  , and  /wozdatabase delete [world]  is now  /woz database delete [world]
+        - Information about this plugin can be found by running  /woz info  or just  /woz
+    - Commands that are run incorrectly or produce an error now send better formatted and more detailed error messages
+    - Moved block un-logging from BlockBreakEvent and BlockChange packet handler into BlockDropItemEvent handler (no effect on functionality)
+    - Overhauled custom block logging system - custom blocks are now defined in separate files and logged using their IDs
+        - All data for custom block types is stored in files in the new  CustomBlockDefinitions  folder
+            - File names in this folder can be arbitrary, and there can be any number of custom blocks in each file
+            - Sub-folders with definition files in the  CustomBlockDefinitions  folder are allowed
+        - Removed functionality for the  "keep-mojang-prefix"  config option
+        - Custom block items only require the NBT tags  IsCustomBlock: [boolean]  and  CustomBlock: [custom block ID]
+        - Custom blocks now support custom drops, including drop chances and items with NBT tags
+            - See the demo file in the plugin data folder at  WorldOfZombies\CustomBlockDefinitions\demo.yml  for an example of all of the available options in a custom block definition and their formatting
+                - If this file does not exist, temporarily remove or clear the  CustomBlockDefinitions  folder, and it will be automatically added
+    - Added new command:  /woz database
+        - /woz database delete [world]  deletes all of the custom block data in a world
+        - /woz database clone [world1] [world2]  deletes the custom block data in  world2  , then clones the custom block database from  world1  to  world2
+            - world1  and  world2  cannot be the same
+        - /woz database confirm  is the required confirmation for both of the above commands
+    - Added source code for this plugin onto GitHub:
+    - Made many small changes in the code including some small new error catchers and other improvements
+    - Added debug level 4 for logging messages about individual blocks or messages that will definitely be spammed often
+        - For example, logging the location of a successfully loaded block or that a chunk does not have any custom blocks because it doesn't have a database file
+        - Any value of debug higher than 4 will be treated as debug level 4
+
+1.1.1     6/23/21
+    - Fixed a critical error that prevented the plugin from being loaded when the plugin data folder didn't exist
+    - Added a depend on NBT API to read custom NBT tags from custom block items
+        - Custom blocks must have these tags:  isCustomBlock: [boolean], actualBlockData: [BlockData as a string], disguisedBlockData: [BlockData as a string]
+        - A custom block is only logged if:  it has the tag isCustomBlock:true  and the tags  actualBlockData and disguisedBlockData  aren't empty
+    - Changed the structure of the custom block data folder:
+        - Instead of  \WorldOfZombies\customBlockChunks\[chunk files]  , the new structure is  \WorldOfZombies\CustomBlockDatabase\[world name]\[chunk files]
+        - Changed the underscores in files' names to periods and replaced the world name with the word "chunk", so the format is now:  chunk.[chunkX].[chunkZ].yml
+    - Changed the structure of  config.yml  , so it is recommended to delete the file so it can be recreated
+    - Added a customBlockConfig boolean  "keep-mojang-prefix"  which will determine the structure of the BlockData stored in files
+        - For example, if the option is true, stored BlockData could be  "minecraft:diamond_ore"  but if its false, it could be  "diamond_ore"
+    - Added a checker to delete empty files and subChunk sections to reduce file sizes
+    - Added a debug level 3 for seeing very spammy messages that usually won't be used to fix errors
+    - Added a section in  /wozinfo  to show the enabled or disabled status of modules
+
+1.1.0     6/18/21:
+    - Changed the  "debug"  option in the config to be an integer from 0-2, where 0 is no messages, 1 is some messages, and 2 is all messages
+    - Added basic logic for placing, breaking, and loading custom blocks from files instead of using entities
+    - Creates a new folder "customBlockChunks" which stores files corresponding to a chunk named:  [world]_[chunkX]_[chunkZ].yml
+        - Each file stores data for the chunk whose location is the file name
+        - Files are divided into subChunk headers
+            - Each header is numbered from 0-15 (usually out of order) based on the Y-coordinate of a block divided by 16
+            - Each header should only contain data for blocks with a Y-coordinate between  [number] * 16  and  (([number] + 1) * 16) - 1
+                - For example, subChunk6 should only hold blocks with a Y-coordinate between 96 and 111, and subChunk7 should only hold blocks with a Y-coordinate between 112 and 125
+            - Each entry for a custom block contains the location of the block and the disguised block's BlockData
+                - For example, an entry could be:  survival_19931_70_-17212: minecraft:diamond_ore
+    - When any block is placed, its location and BlockData will be logged to the appropriate file, and the file and subChunk header will be created if necessary
+    - When a chunk is loaded by a player using the ChunkData packet, all the blocks in that chunk's file will be loaded
+        - Each subChunk header is given its own MultiBlockChange packet, and all of the data in each entry is added to the packet
+    - When a custom block is broken, its entry will be removed and will therefore not be loaded anymore

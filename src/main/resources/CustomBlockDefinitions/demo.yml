@@ -1,0 +1,60 @@
+#
+#  This is an example of 2 different custom block definitions and their drops
+#  Custom drops are not required, and blocks will work normally with just "actual_block" and "disguised_block"
+#  Inside of the parent "drops" section, there is no restriction on the amount of child drop sections or their names
+#  The only required tag for an individual drop section is "nbt_item" or "item", and all other tags are optional
+#
+
+demo_block:
+  #  As of version 1.1.2, functionality for this option has not been added but is planned for future versions
+  item: '{id:"minecraft:emerald",Count:1b}'
+  block:
+    #  "actual_block" and "disguised_block" here are the same as the tags on custom block items in version 1.1.1
+    #  If "actual_block" is empty, the server-side will not be changed when the custom block is placed
+    actual_block: iron_block
+    #  If "disguised_block" is empty, the client-side block will be the same as the server-side block
+    disguised_block: birch_slab[waterlogged=true]
+    #  The code handling "sync_states" will not succeed when "actual_block" (or the normally placed block if "actual_block" is empty) supports a state that "disguised_block" does not.
+    #  For example, an "actual_block" of a log with the "facing" tag and a "disguised_block" of a diamond block would throw an error because the diamond block cannot support the "facing" tag
+    sync_states:
+      - facing
+      - half
+      - shape
+      - type
+      - axis
+    drops:
+      #  This is optional and is intended to be used like the block "no_drops_block" included in this file
+      #  If it's not included then it will default to "true", and if it's false then the original drops will not be changed
+      enabled: true
+      axe:
+        #  As of 1.1.2, this only includes the official names of required enchantments on the item that broke the custom block
+        conditions:
+          - silk_touch
+        #  "nbt_item" has priority over "item", so "item" will always be ignored if "nbt_item" appears in the same drop section
+        nbt_item: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
+        #  "count" has priority over "min" & "max", so "min" & "max" will always be ignored if "count" appears in the same drop section
+        count: 2
+      dirt:
+        #  "chance" must be a decimal greater than 0 and less than 1
+        #  If a random number between 0 and 1 (exclusive) is chosen
+        chance: .56
+        #  This will not overwrite existing xp drops (for example, breaking a mob spawner), and will only add a new xp orb with this amount of xp
+        xp: 15
+        #  This tag should only contain a BlockData string, which is the same type of string as "actual_data" and "disguised_data"
+        item: dirt
+        #  If "count" or "min" & "max" are not specified, the item amount will default to 1
+        min: 1
+        max: 4
+      cake:
+        #  As of version 1.1.2, functionality for this option has not been added but is planned for future versions
+        custom_item:
+          id: zombie_cake
+          nbt: '{DroppedFromZombieBlock:1b}'
+          count: 2
+
+no_drops_block:
+  item: '{id:"minecraft:dirt"}'
+  block:
+    disguised_block: gold_block
+    drops:
+      enabled: false
