@@ -1,0 +1,7 @@
+#
+#  This config file is used for changing settings in the Custom Block module
+#
+
+Global:
+  debug: 0
+  packet-send-delay: 10

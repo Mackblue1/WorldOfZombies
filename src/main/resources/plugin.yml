@@ -1,0 +1,39 @@
+name: WorldOfZombies
+version: ${project.version}
+author: Mackblue
+description: World of Zombies primary custom plugin
+main: me.woz.customplugins.WorldOfZombies
+website:
+api-version: 1.16
+depend:
+  - ProtocolLib
+  - LibsDisguises
+  - NBTAPI
+
+commands:
+  worldofzombies:
+    description: Main plugin command which is used to run all sub-commands
+    aliases: [woz]
+    usage: "§cUsage: /woz [command] [args]"
+  bb:
+    description: Test random features (should not be used without knowing specifically what this does because its functionality changes often)
+    usage: "§cUsage: /bb"
+    permission: worldofzombies.*
+
+permissions:
+  worldofzombies.*:
+    description: Includes all permissions for this plugin
+    children:
+      worldofzombies.command.*: true
+  worldofzombies.command.*:
+    description: Allows a player to run any of this plugin's commands
+    children:
+      worldofzombies.command.reload: true
+      worldofzombies.command.info: true
+      worldofzombies.command.database: true
+  worldofzombies.command.reload:
+    description: Allows a player to reload this plugin's config files
+  worldofzombies.command.info:
+    description: Allows a player to get information about this plugin
+  worldofzombies.command.database:
+    description: Allows a player to delete or clone worlds' custom block databases
