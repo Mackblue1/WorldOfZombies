@@ -23,4 +23,4 @@ The primary custom plugin for the World of Zombies Minecraft server.
 
 ## Version History
 
-- For a full version history starting at version 1.1.0, see the __[changelog](changelog.txt)__
+- For a full version history starting at version 1.1.0, see the [changelog](./changelog.txt)
