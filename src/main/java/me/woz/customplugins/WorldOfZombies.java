@@ -5,7 +5,7 @@ import com.comphenix.protocol.ProtocolManager;
 import me.woz.customplugins.commands.CommandHandler;
 import me.woz.customplugins.commands.SCommand;
 import me.woz.customplugins.commands.TestCommand;
-import me.woz.customplugins.commands.woz.CustomBlockDatabaseCommands;
+import me.woz.customplugins.commands.woz.BlockDatabaseCommands;
 import me.woz.customplugins.commands.SCommandTab;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.configuration.ConfigurationSection;
@@ -38,28 +38,30 @@ public class WorldOfZombies extends JavaPlugin {
         commandHandler = new CommandHandler();
         pm = ProtocolLibrary.getProtocolManager();
 
-        if (config.getBoolean("Modules.custom-blocks")) {
-            customBlockHandler = new CustomBlockHandler(this, pm);
-            getServer().getPluginManager().registerEvents(customBlockHandler, this);
-
-            CustomBlockDatabaseCommands customBlockDatabaseCommands = new CustomBlockDatabaseCommands(this);
-            commandHandler.registerMultiArgCommand(customBlockDatabaseCommands, "", "Confirms a previous database command", "database", "confirm");
-            commandHandler.registerMultiArgCommand(customBlockDatabaseCommands, " [world]", "Deletes the custom block database for a world", "database", "delete");
-            commandHandler.registerMultiArgCommand(customBlockDatabaseCommands, " [world1] [world2]", "Clones the database from  world1  to  world2", "database", "clone");
-        }
-
-        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockHandler));
-        getCommand("worldofzombies").setTabCompleter(new SCommandTab(this));
-        getCommand("bb").setExecutor(new TestCommand(this, customBlockHandler));
-
         console.info(ChatColor.GOLD + " __          __  ______ ");
         console.info(ChatColor.GOLD + " \\ \\        / / |___  / ");
         console.info(ChatColor.GOLD + "  \\ \\  /\\  / /__   / /  ");
         console.info(ChatColor.GOLD + "   \\ \\/  \\/ / _ \\ / /   ");
         console.info(ChatColor.GOLD + "    \\  /\\  / (_) / /__  ");
         console.info(ChatColor.GOLD + "     \\/  \\/ \\___/_____|");
-        console.info("");
+        console.info("_______________________________________________________");
+
+        if (config.getBoolean("Modules.custom-blocks")) {
+            customBlockHandler = new CustomBlockHandler(this, pm);
+            getServer().getPluginManager().registerEvents(customBlockHandler, this);
+
+            BlockDatabaseCommands blockDatabaseCommands = new BlockDatabaseCommands(this);
+            commandHandler.registerMultiArgCommand(blockDatabaseCommands, "", "Confirms a previous database command", "database", "confirm");
+            commandHandler.registerMultiArgCommand(blockDatabaseCommands, " [world]", "Deletes the custom block database for a world", "database", "delete");
+            commandHandler.registerMultiArgCommand(blockDatabaseCommands, " [world1] [world2]", "Clones the database from  world1  to  world2", "database", "clone");
+        }
+
+        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockHandler));
+        getCommand("worldofzombies").setTabCompleter(new SCommandTab(this));
+        getCommand("bb").setExecutor(new TestCommand(this, customBlockHandler));
+
         console.info(ChatColor.GREEN + "World of Zombies custom plugin loaded successfully");
+        console.info("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾");
     }
 
     @Override
@@ -71,7 +73,7 @@ public class WorldOfZombies extends JavaPlugin {
     public void createConfigs() {
         if (!getDataFolder().exists()) {
             try {
-                getDataFolder().mkdir();
+                getDataFolder().mkdirs();
             } catch (Exception e) {
                 console.severe(ChatColor.RED + "World of Zombies data folder could not be created");
             }

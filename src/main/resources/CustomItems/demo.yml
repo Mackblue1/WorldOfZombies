@@ -3,6 +3,7 @@
 #  Custom drops are not required, and blocks will work normally with just "actual_block" and "disguised_block"
 #  Inside of the parent "drops" section, there is no restriction on the amount of child drop sections or their names
 #  The only required tag for an individual drop section is "nbt_item" or "item", and all other tags are optional
+#  Each tag outside the parent "drops" section cannot appear more than once, and tags inside a child drop section cannot appear more than once in a single drop section
 #
 
 demo_block:
@@ -12,8 +13,10 @@ demo_block:
     #  "actual_block" and "disguised_block" here are the same as the tags on custom block items in version 1.1.1
     #  If "actual_block" is empty, the server-side will not be changed when the custom block is placed
     actual_block: iron_block
+
     #  If "disguised_block" is empty, the client-side block will be the same as the server-side block
     disguised_block: birch_slab[waterlogged=true]
+
     #  The code handling "sync_states" will not succeed when "actual_block" (or the normally placed block if "actual_block" is empty) supports a state that "disguised_block" does not.
     #  For example, an "actual_block" of a log with the "facing" tag and a "disguised_block" of a diamond block would throw an error because the diamond block cannot support the "facing" tag
     sync_states:
@@ -22,26 +25,48 @@ demo_block:
       - shape
       - type
       - axis
+
     drops:
       #  This is optional and is intended to be used like the block "no_drops_block" included in this file
-      #  If it's not included then it will default to "true", and if it's false then the original drops will not be changed
+      #  If it's not included then it will default to "true", and if it's "false" then the original drops will not be changed
       enabled: true
+
+      #  This is optional and will cancel any xp normally dropped by a broken block (like a mob spawner)
+      #  If it's not included then it will default to "false"
+      cancel-xp: true
+
       axe:
         #  As of 1.1.2, this only includes the official names of required enchantments on the item that broke the custom block
+        #  If the item is missing any of these enchantments, then this section will be exited
         conditions:
           - silk_touch
+
         #  "nbt_item" has priority over "item", so "item" will always be ignored if "nbt_item" appears in the same drop section
         nbt_item: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
+
+        #  Sets the amount to drop of an item to this value
         #  "count" has priority over "min" & "max", so "min" & "max" will always be ignored if "count" appears in the same drop section
         count: 2
+
       dirt:
-        #  "chance" must be a decimal greater than 0 and less than 1
-        #  If a random number between 0 and 1 (exclusive) is chosen
+        #  "chance" must be a decimal greater than or equal to 0 and less than 1
+        #  A random number greater than or equal 0 and less than 1 is generated, and if this number is greater than the value of "chance" then this section will be exited
         chance: .56
-        #  This will not overwrite existing xp drops (for example, breaking a mob spawner), and will only add a new xp orb with this amount of xp
-        xp: 15
+
+        #  The new xp value changed by "set-xp", "add-xp", and "multiply-xp" is synced between sections, and the sections are read from the top down
+        #  The order for reading xp related tags within a section is: 1. "set-xp"  2. "add-xp"  3. "multiply-xp"
+        #  All 3 options accept a "double", which includes decimal numbers, but the final value will be rounded down into an "int"
+        #  Sets the dropped xp to this value
+        set-xp: 15
+        #  Adds this value to the dropped xp
+        add-xp: 2
+        #  Multiplies the dropped xp by this value
+        multiply-xp: 1.5
+
         #  This tag should only contain a BlockData string, which is the same type of string as "actual_data" and "disguised_data"
         item: dirt
+
+        #  Sets the amount to drop of an item to a random number between these values (inclusive)
         #  If "count" or "min" & "max" are not specified, the item amount will default to 1
         min: 1
         max: 4

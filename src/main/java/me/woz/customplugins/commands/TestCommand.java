@@ -48,10 +48,11 @@ public class TestCommand implements CommandExecutor {
 
             Block target = player.getTargetBlock(10);
             BlockData data = target.getBlockData();
-            player.sendMessage(ChatColor.AQUA + "BlockData string:  " + data.getAsString());
+            player.sendMessage(ChatColor.GREEN + "" + target.getDrops(player.getInventory().getItemInMainHand(), player));
+            /*player.sendMessage(ChatColor.AQUA + "BlockData string:  " + data.getAsString());
             player.sendMessage(ChatColor.YELLOW + "WrappedBlockData type:  " + WrappedBlockData.createData(data).getType().toString());
             player.sendMessage(ChatColor.DARK_PURPLE + "id:  " + customBlockHandler.getLoggedStringFromLocation(target.getLocation()));
-            player.sendMessage(ChatColor.GREEN + "NBT item:  " + NBTItem.convertItemtoNBT(player.getInventory().getItemInMainHand()).toString());
+            player.sendMessage(ChatColor.GREEN + "NBT item:  " + NBTItem.convertItemtoNBT(player.getInventory().getItemInMainHand()).toString());*/
             /*String s = data.getAsString().contains("waterlogged=true") ? "[waterlogged=false]" : "[waterlogged=true]";
             data = data.merge(Bukkit.createBlockData(data.getMaterial().toString().toLowerCase() + s));
             target.setBlockData(data);

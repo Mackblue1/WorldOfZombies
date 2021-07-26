@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
-public class CustomBlockDatabaseCommands implements SubCommand {
+public class BlockDatabaseCommands implements SubCommand {
 
     private final WorldOfZombies main;
     private final Logger console;
@@ -21,7 +21,7 @@ public class CustomBlockDatabaseCommands implements SubCommand {
 
     private int deleteScheduler, cloneScheduler;
 
-    public CustomBlockDatabaseCommands(WorldOfZombies main) {
+    public BlockDatabaseCommands(WorldOfZombies main) {
         this.main = main;
         this.console = main.getLogger();
         this.confirmMap = new HashMap<>();
@@ -42,7 +42,7 @@ public class CustomBlockDatabaseCommands implements SubCommand {
                     String[] data = confirmedCommand.split(",");
                     String world = data[1];
 
-                    File dir = new File(main.getDataFolder() + File.separator + "CustomBlockDatabase" + File.separator + world);
+                    File dir = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world);
 
                     //delete command
                     if (data[0].equalsIgnoreCase("delete")) {
@@ -74,7 +74,7 @@ public class CustomBlockDatabaseCommands implements SubCommand {
                     else if (data[0].equalsIgnoreCase("clone")) {
                         String newWorld = data[2];
                         if (dir.exists()) {
-                            File newDir = new File(main.getDataFolder() + File.separator + "CustomBlockDatabase" + File.separator + newWorld);
+                            File newDir = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + newWorld);
                             if (newDir.exists()) {
                                 try {
                                     FileUtils.deleteDirectory(newDir);

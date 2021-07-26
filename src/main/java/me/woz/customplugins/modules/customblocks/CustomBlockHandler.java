@@ -23,6 +23,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
+import org.bukkit.event.block.BlockExpEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -70,7 +71,7 @@ public class CustomBlockHandler implements Listener {
         World world = chunk.getWorld();
         String chunkString = world.getName() + ", " + chunkX + ", " + chunkZ;
 
-        File chunkFolder = new File(main.getDataFolder() + File.separator + "CustomBlockDatabase" + File.separator + world.getName());
+        File chunkFolder = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName());
         if (main.loadYamlFromFile(chunkFolder, false, true, debug, ChatColor.BLUE + "No custom blocks were loaded because the database folder for this world does not exist") == null) {
             return 0;
         }
@@ -210,7 +211,7 @@ public class CustomBlockHandler implements Listener {
         int chunkZ = z >> 4;
         int subChunkY = y >> 4;
 
-        File file = new File(main.getDataFolder() + File.separator + "CustomBlockDatabase" + File.separator + world.getName(), "chunk." + chunkX + "." + chunkZ + ".yml");
+        File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunkX + "." + chunkZ + ".yml");
         YamlConfiguration yaml = main.loadYamlFromFile(file, false, false, debug, "");
 
         String logPath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
@@ -225,7 +226,7 @@ public class CustomBlockHandler implements Listener {
 
     //if a location is logged in a file, it will be removed from the file
     public void unlogBlock(Location loc, Player player) {
-        File file = new File(main.getDataFolder() + File.separator + "CustomBlockDatabase" + File.separator + loc.getWorld().getName(), "chunk." + loc.getChunk().getX() + "." + loc.getChunk().getZ() + ".yml");
+        File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + loc.getWorld().getName(), "chunk." + loc.getChunk().getX() + "." + loc.getChunk().getZ() + ".yml");
 
         String chunkString = loc.getWorld().getName() + ", " + loc.getChunk().getX() + ", " + loc.getChunk().getZ();
         String locString = loc.getWorld().getName() + ", " + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ();
@@ -307,9 +308,9 @@ public class CustomBlockHandler implements Listener {
                         String id = getLoggedStringFromLocation(new Location(world, x, y, z));
                         if (id != null) {
                             //commented because this unlogs the block before the event handlers can read it
-                            /*if (wrappedBlockData.getType().isEmpty()) {
+                            if (/*wrappedBlockData.getType().isEmpty()*/block.getType().isEmpty()) {
                                 unlogBlock(new Location(world, x, y, z), player);
-                            } else {*/
+                            } else {
                                 BlockData disguisedData = createSyncedBlockData(block.getBlockData().getAsString(), id, true);
 
                                 if (disguisedData == null) {
@@ -325,7 +326,7 @@ public class CustomBlockHandler implements Listener {
                                         console.info(ChatColor.AQUA + "Edited the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " by " + player.getName());
                                     }
                                 }
-                            //}
+                            }
                         }
                     }
                 }
@@ -351,62 +352,6 @@ public class CustomBlockHandler implements Listener {
             e.printStackTrace();
         }
     }*/
-
-    public void test2(BlockPlaceEvent event) {
-        Block block = event.getBlock();
-        Chunk chunk = block.getChunk();
-        World world = block.getWorld();
-
-        ItemStack item = event.getItemInHand();
-        NBTItem nbtItem = new NBTItem(item);
-        String id = nbtItem.getString("CustomBlock");
-        String sourceFilePath = idToFilePath.get(id);
-
-        if (nbtItem.getBoolean("IsCustomBlock") && !id.equals("")) {
-            YamlConfiguration yaml = main.loadYamlFromFile(new File(sourceFilePath), false, false, debug, "");
-            if (yaml == null) {
-                return;
-            }
-
-            if (yaml.isConfigurationSection(id)) {
-                ConfigurationSection idSection = yaml.getConfigurationSection(id);
-                String actual = idSection.getString("actual_block");
-                String disguised = idSection.getString("disguised_block");
-                List<String> syncList = idSection.getStringList("sync_states");
-
-                String blockData = block.getBlockData().getAsString();
-                String syncString = block.getBlockData().getMaterial().toString() + "[";
-
-                console.info(ChatColor.LIGHT_PURPLE + "" + syncList);
-                for (String state : syncList) {
-                    if (blockData.contains(state)) {
-                        console.info(ChatColor.YELLOW + syncString);
-                        String afterState = syncString.substring(syncString.indexOf(state));
-                        console.info(afterState);
-                        int stateEnd = Math.min(afterState.indexOf(","), afterState.indexOf("]"));
-                        syncString += afterState.substring(0, stateEnd) + ",";
-                    }
-                }
-
-                syncString = syncString.substring(0, syncString.length() - 1) + "]";
-                console.info(ChatColor.BLUE + syncString);
-                //BlockData syncData = Bukkit.createBlockData(syncString);
-
-                if (idSection.isConfigurationSection("block.drops")) {
-                    ConfigurationSection dropsSection = idSection.getConfigurationSection("block.drops");
-                    Set<String> drops = dropsSection.getKeys(false);
-
-                    for (String s : drops) {
-                        if (dropsSection.isConfigurationSection(s)) {
-                            ConfigurationSection drop = dropsSection.getConfigurationSection(s);
-                        }
-                    }
-                }
-            } else if (debug >= 2) {
-                console.severe(ChatColor.RED + "Could not log the custom block \"" + id + "\" because it does not exist in the file " + sourceFilePath);
-            }
-        }
-    }
 
     //when a player places a block, log the location and disguised_block, and set the server block to actual_data if it exists in the definition
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -443,7 +388,7 @@ public class CustomBlockHandler implements Listener {
             }
             String actual = sourceYaml.getString(id + ".block.actual_block");
 
-            File file = new File(main.getDataFolder() + File.separator + "CustomBlockDatabase" + File.separator + world.getName(), "chunk." + chunk.getX() + "." + chunk.getZ() + ".yml");
+            File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunk.getX() + "." + chunk.getZ() + ".yml");
             YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
             if (yaml == null) {
                 return;
@@ -488,7 +433,21 @@ public class CustomBlockHandler implements Listener {
         }
     }*/
 
-    //custom block drops logic
+    //cancels any xp that would normally drop from a custom block being broken (like a spawner)
+    @EventHandler
+    public void blockDropXpEvent(BlockExpEvent event) {
+        String id = getLoggedStringFromLocation(event.getBlock().getLocation());
+        String path = idToFilePath.get(id);
+        if (event.getExpToDrop() != 0 && id != null) {
+            YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
+            if (yaml.getBoolean(id + ".block.drops.enabled", true) && yaml.getBoolean(id + ".block.drops.cancel-xp")) {
+                console.info(ChatColor.DARK_PURPLE + "cancelling " + event.getExpToDrop() + " xp");
+                event.setExpToDrop(0);
+            }
+        }
+    } 
+    
+    //custom block dropping logic based on options in a custom block's "block.drops" definition section
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void blockDropItem(BlockDropItemEvent event) {
         Player player = event.getPlayer();
@@ -501,94 +460,112 @@ public class CustomBlockHandler implements Listener {
 
         if (id != null) {
             unlogBlock(loc, player);
-            YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
-            if (yaml == null) {
-                console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because the source file " + path + " does not exist");
-                return;
-            }
-            if (yaml.isConfigurationSection(id)) {
-                ConfigurationSection idSection = yaml.getConfigurationSection(id);
-                if (idSection.isConfigurationSection("block.drops")) {
-                    ConfigurationSection parentDropsSection = idSection.getConfigurationSection("block.drops");
 
-                    //TODO: add check for: !originalDrops.isEmpty() || a new config option that ignores empty originalDrops?
-                    if (parentDropsSection.getBoolean("enabled", true)) {
-                        Set<String> drops = parentDropsSection.getKeys(false);
-                        int droppedXp = 0;
+            if (player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty()) {
+                YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
+                if (yaml == null) {
+                    console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because the source file " + path + " does not exist");
+                    return;
+                }
+                if (yaml.isConfigurationSection(id)) {
+                    ConfigurationSection idSection = yaml.getConfigurationSection(id);
+                    if (idSection.isConfigurationSection("block.drops")) {
+                        ConfigurationSection parentDropsSection = idSection.getConfigurationSection("block.drops");
 
-                        drop:
-                        for (String drop : drops) {
-                            if (parentDropsSection.isConfigurationSection(drop)) {
-                                ConfigurationSection dropSection = parentDropsSection.getConfigurationSection(drop);
-                                if (dropSection.contains("conditions")) {
-                                    for (String condition : dropSection.getStringList("conditions")) {
-                                        Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(condition));
-                                        if (enchantment == null) {
-                                            console.severe(ChatColor.RED + "The enchantment \"" + enchantment.getKey() + "\" is not a valid enchantment");
-                                            continue drop;
-                                        } else if (!player.getInventory().getItemInMainHand().containsEnchantment(Enchantment.getByKey(NamespacedKey.minecraft(condition)))) {
-                                            continue drop;
+                        if (parentDropsSection.getBoolean("enabled", true)) {
+                            Set<String> drops = parentDropsSection.getKeys(false);
+                            double xpToDrop = 0;
+
+                            drop:
+                            for (String drop : drops) {
+                                if (parentDropsSection.isConfigurationSection(drop)) {
+                                    ConfigurationSection dropSection = parentDropsSection.getConfigurationSection(drop);
+                                    if (dropSection.contains("conditions")) {
+                                        for (String condition : dropSection.getStringList("conditions")) {
+                                            Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(condition));
+                                            if (enchantment == null) {
+                                                console.severe(ChatColor.RED + "The enchantment \"" + enchantment.getKey() + "\" is not a valid enchantment");
+                                                continue drop;
+                                            } else if (!player.getInventory().getItemInMainHand().containsEnchantment(Enchantment.getByKey(NamespacedKey.minecraft(condition)))) {
+                                                continue drop;
+                                            }
                                         }
                                     }
-                                }
-                                if (dropSection.contains("chance")) {
-                                    double chance = dropSection.getDouble("chance");
-                                    if (chance > 0 && chance < 1) {
-                                        if (Math.random() >= chance) {
-                                            continue;
+
+                                    if (dropSection.contains("chance")) {
+                                        double chance = dropSection.getDouble("chance");
+                                        if (chance > 0 && chance < 1) {
+                                            if (Math.random() >= chance) {
+                                                continue;
+                                            }
+                                        } else {
+                                            console.severe(ChatColor.RED + "The \"chance\" tag in the drop section \"" + drop + "\" for the custom block \"" + id + "\" must be greater than 0 and less than 1");
                                         }
+                                    }
+
+                                    ItemStack item;
+                                    if (dropSection.contains("nbt_item")) {
+                                        item = NBTItem.convertNBTtoItem(new NBTContainer(dropSection.getString("nbt_item")));
+                                    } else if (dropSection.contains("item")) {
+                                        BlockData blockData = Bukkit.createBlockData(dropSection.getString("item"));
+                                        item = new ItemStack(blockData.getMaterial());
                                     } else {
-                                        console.severe(ChatColor.RED + "The \"chance\" tag in the drop section \"" + drop + "\" for the custom block \"" + id + "\" must be greater than 0 and less than 1");
+                                        console.warning(ChatColor.YELLOW + "No item is specified for the custom block \"" + id + "\" in the drop section \"" + drop + "\" in the file " + path);
+                                        continue;
                                     }
-                                }
 
-                                ItemStack item;
-                                if (dropSection.contains("nbt_item")) {
-                                    item = NBTItem.convertNBTtoItem(new NBTContainer(dropSection.getString("nbt_item")));
-                                } else if (dropSection.contains("item")) {
-                                    BlockData blockData = Bukkit.createBlockData(dropSection.getString("item"));
-                                    item = new ItemStack(blockData.getMaterial());
+                                    int count = 1;
+                                    if (dropSection.contains("count")) {
+                                        count = dropSection.getInt("count");
+                                    } else if (dropSection.contains("min") && dropSection.contains("max")) {
+                                        int max = dropSection.getInt("max");
+                                        int min = dropSection.getInt("min");
+                                        count = (int) (Math.random() * (max - min + 1) + min);
+                                    }
+                                    item.setAmount(count);
+
+                                    if (dropSection.contains("set-xp")) {
+                                        xpToDrop = dropSection.getDouble("set-xp");
+                                    }
+                                    if (dropSection.contains("add-xp")) {
+                                        xpToDrop += dropSection.getDouble("add-xp");
+                                    }
+                                    if (dropSection.contains("multiply-xp")) {
+                                        xpToDrop *= dropSection.getDouble("multiply-xp");
+                                    }
+
+                                    newDrops.add(item);
+                                }
+                            }
+                            originalDrops.clear();
+
+                            int xpToDropInt = (int) xpToDrop;
+                            if (xpToDropInt > 0) {
+                                ((ExperienceOrb) loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB)).setExperience(xpToDropInt);
+                            }
+                            newDrops.forEach(item -> loc.getWorld().dropItemNaturally(loc, item));
+
+                            String successMsg = "The custom block \"" + id + "\" successfully dropped ";
+                            if (debug >= 3) {
+                                if (newDrops.isEmpty()) {
+                                    successMsg += "no items";
                                 } else {
-                                    console.warning(ChatColor.YELLOW + "No item is specified for the custom block \"" + id + "\" in the drop section \"" + drop + "\" in the file " + path);
-                                    continue;
+                                    successMsg += "the items " + newDrops.toString().replace("[", "").replace("]", "");
                                 }
 
-                                int count = 1;
-                                if (dropSection.contains("count")) {
-                                    count = dropSection.getInt("count");
-                                } else if (dropSection.contains("min") && dropSection.contains("max")) {
-                                    int max = dropSection.getInt("max");
-                                    int min = dropSection.getInt("min");
-                                    count = (int) (Math.random() * (max - min + 1) + min);
-                                }
-                                item.setAmount(count);
+                                successMsg += " and " + xpToDropInt + " xp";
 
-                                if (dropSection.contains("xp")) {
-                                    droppedXp = dropSection.getInt("xp");
-                                    ((ExperienceOrb) loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB)).setExperience(droppedXp);
-                                }
-
-                                newDrops.add(item);
+                                console.info(ChatColor.LIGHT_PURPLE + successMsg);
                             }
-                        }
-                        originalDrops.clear();
-                        newDrops.forEach(item -> loc.getWorld().dropItemNaturally(loc, item));
-
-                        String successMsg = ChatColor.LIGHT_PURPLE + "The custom block \"" + id + "\" successfully dropped the items " + newDrops;
-                        if (debug >= 3) {
-                            if (droppedXp > 0) {
-                                successMsg += " and " + droppedXp + " xp";
-                            }
-                            console.info(successMsg);
+                        } else {
+                            console.warning(ChatColor.YELLOW + "The drops for the custom block \"" + id + "\" were not changed because the \"enabled\" option is set to false in its drops section");
                         }
                     } else {
-                        console.warning(ChatColor.YELLOW + "The drops for the custom block \"" + id + "\" were not changed because the \"enabled\" option is set to false in its drops section");
+                        console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its drop section does not exist");
                     }
                 } else {
-                    console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its drop section does not exist");
+                    console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its definition does not exist in the file " + path);
                 }
-            } else {
-                console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its definition does not exist in the file " + path);
             }
         }
     }
@@ -599,16 +576,16 @@ public class CustomBlockHandler implements Listener {
         config = main.getConfig();
         customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom_block.yml"), false, false, debug, "");
 
-        File blockDefinitionsDir = new File(main.getDataFolder() + File.separator + "CustomBlockDefinitions");
-        if (blockDefinitionsDir.exists()) {
-            if (blockDefinitionsDir.list().length == 0) {
-                main.saveResource("CustomBlockDefinitions" + File.separator + "demo.yml", false);
+        File customItemsDir = new File(main.getDataFolder() + File.separator + "CustomItems");
+        if (customItemsDir.exists()) {
+            if (customItemsDir.list().length == 0) {
+                main.saveResource("CustomItems" + File.separator + "demo.yml", false);
                 if (debug >= 1) {
-                    console.info(ChatColor.DARK_AQUA + "Added the file CustomBlockDefinitions" + File.separator + "demo.yml because the CustomBlockDefinitions folder was empty");
+                    console.info(ChatColor.DARK_AQUA + "Added the file CustomItems" + File.separator + "demo.yml because the CustomItems folder was empty");
                 }
             }
 
-            for (File file : FileUtils.listFiles(blockDefinitionsDir, new String[] {"yml"}, true)) {
+            for (File file : FileUtils.listFiles(customItemsDir, new String[] {"yml"}, true)) {
                 YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
                 yaml.getKeys(false).forEach(key -> {
                     if (yaml.isConfigurationSection(key)) {
@@ -617,8 +594,8 @@ public class CustomBlockHandler implements Listener {
                 });
             }
         } else {
-            main.saveResource("CustomBlockDefinitions" + File.separator + "demo.yml", false);
-            console.info(ChatColor.DARK_AQUA + "Created the file CustomBlockDefinitions" + File.separator + "demo.yml because the CustomBlockDefinitions folder did not exist");
+            main.saveResource("CustomItems" + File.separator + "demo.yml", false);
+            console.info(ChatColor.DARK_AQUA + "Created the file CustomItems" + File.separator + "demo.yml because the CustomItems folder did not exist");
         }
 
         debug = customBlockConfig.getInt("Global.debug");
