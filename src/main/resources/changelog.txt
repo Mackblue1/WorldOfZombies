@@ -18,7 +18,7 @@
         - /woz database clone [world1] [world2]  deletes the custom block data in  world2  , then clones the custom block database from  world1  to  world2
             - world1  and  world2  cannot be the same
         - /woz database confirm  is the required confirmation for both of the above commands
-    - Added source code for this plugin onto GitHub:
+    - Added source code for this plugin onto GitHub:  https://github.com/Mackblue1/WorldOfZombies
     - Made many small changes in the code including some small new error catchers and other improvements
     - Added debug level 4 for logging messages about individual blocks or messages that will definitely be spammed often
         - For example, logging the location of a successfully loaded block or that a chunk does not have any custom blocks because it doesn't have a database file
