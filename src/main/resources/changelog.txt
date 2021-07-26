@@ -1,4 +1,4 @@
-1.1.2     7/24/21
+1.1.2     7/26/21
     - Overhauled command syntax - all commands are now:  /woz [command] [args]
         - For example,  /wozreload  is now  /woz reload  , and  /wozdatabase delete [world]  is now  /woz database delete [world]
         - Information about this plugin can be found by running  /woz info  or just  /woz
