@@ -21,7 +21,6 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.BlockExpEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -32,7 +31,6 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 public class CustomBlockHandler implements Listener {
@@ -257,80 +255,113 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    //listens for MAP_CHUNK (ChunkData) packets and calls the block loader for that chunk after a delay specified in the customBlockConfig
-    public void chunkLoadListener() {
-        pm.addPacketListener(
-                new PacketAdapter(main, ListenerPriority.MONITOR, PacketType.Play.Server.MAP_CHUNK) {
+    public void spawnCustomBlockDrops(String id, Location loc, List<Item> originalDrops, Player player) {
+        List<ItemStack> newDrops = new ArrayList<>();
+        String path = idToFilePath.get(id);
+        YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
+        if (yaml == null) {
+            console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because the source file " + path + " does not exist");
+            return;
+        }
+        if (yaml.isConfigurationSection(id)) {
+            ConfigurationSection idSection = yaml.getConfigurationSection(id);
+            if (idSection.isConfigurationSection("block.drops")) {
+                ConfigurationSection parentDropsSection = idSection.getConfigurationSection("block.drops");
 
-                    @Override
-                    public void onPacketSending(PacketEvent event) {
+                if (parentDropsSection.getBoolean("enabled", true)) {
+                    Set<String> drops = parentDropsSection.getKeys(false);
+                    double xpToDrop = 0;
 
-                        Player player = event.getPlayer();
-                        int chunkX = event.getPacket().getIntegers().readSafely(0);
-                        int chunkZ = event.getPacket().getIntegers().readSafely(1);
-                        Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
-
-                        if (chunk.isLoaded()) {
-                            Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(main, () -> {
-                                int blocks = loadCustomBlocksFromChunkFile(player, chunk);
-
-                                if (debug >= 1 && blocks != 0) {
-                                    console.info(ChatColor.DARK_GREEN + "Loaded " + blocks + " blocks in the chunk at " + chunkX + ", " + chunkZ + " by " + player.getName());
-                                }
-                            }, customBlockConfig.getLong("Global.packet-send-delay"));
-                        }
-                    }
-                }
-        );
-    }
-
-    //listens for BlockChange packets and (to do) if its position is logged, edits the packet to contain the logged BlockData
-    public void blockChangeListener() {
-        pm.addPacketListener(
-                new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server.BLOCK_CHANGE) {
-
-                    @Override
-                    public void onPacketSending(PacketEvent event) {
-                        Player player = event.getPlayer();
-                        PacketContainer packet = event.getPacket();
-                        WrappedBlockData wrappedBlockData = packet.getBlockData().readSafely(0);
-                        BlockPosition position = packet.getBlockPositionModifier().readSafely(0);
-
-                        World world = player.getWorld();
-                        int x = position.getX();
-                        int y = position.getY();
-                        int z = position.getZ();
-                        Block block = world.getBlockAt(x, y, z);
-
-                        //player.sendMessage(ChatColor.DARK_PURPLE + "BC:  " + position + "   " + data.getType());
-
-                        String locString = world.getName() + ", " + x + ", " + y + ", " + z;
-                        String id = getLoggedStringFromLocation(new Location(world, x, y, z));
-                        if (id != null) {
-                            //commented because this unlogs the block before the event handlers can read it
-                            if (/*wrappedBlockData.getType().isEmpty()*/block.getType().isEmpty()) {
-                                unlogBlock(new Location(world, x, y, z), player);
-                            } else {
-                                BlockData disguisedData = createSyncedBlockData(block.getBlockData().getAsString(), id, true);
-
-                                if (disguisedData == null) {
-                                    return;
-                                }
-
-                                if (disguisedData.getMaterial().equals(Material.AIR) && debug >= 3) {
-                                    console.warning(ChatColor.YELLOW + "Did not edit the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " because its source \"disguised_block\" is empty");
-                                } else {
-                                    packet.getBlockData().write(0, WrappedBlockData.createData(disguisedData));
-
-                                    if (debug >= 4) {
-                                        console.info(ChatColor.AQUA + "Edited the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " by " + player.getName());
+                    drop:
+                    for (String drop : drops) {
+                        if (parentDropsSection.isConfigurationSection(drop)) {
+                            ConfigurationSection dropSection = parentDropsSection.getConfigurationSection(drop);
+                            if (player != null && dropSection.contains("conditions")) {
+                                for (String condition : dropSection.getStringList("conditions")) {
+                                    Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(condition));
+                                    if (enchantment == null) {
+                                        console.severe(ChatColor.RED + "The enchantment \"" + enchantment.getKey() + "\" is not a valid enchantment");
+                                        continue drop;
+                                    } else if (!player.getInventory().getItemInMainHand().containsEnchantment(Enchantment.getByKey(NamespacedKey.minecraft(condition)))) {
+                                        continue drop;
                                     }
                                 }
                             }
+
+                            if (dropSection.contains("chance")) {
+                                double chance = dropSection.getDouble("chance");
+                                if (chance > 0 && chance < 1) {
+                                    if (Math.random() >= chance) {
+                                        continue;
+                                    }
+                                } else {
+                                    console.severe(ChatColor.RED + "The \"chance\" tag in the drop section \"" + drop + "\" for the custom block \"" + id + "\" must be greater than 0 and less than 1");
+                                }
+                            }
+
+                            ItemStack item;
+                            if (dropSection.contains("nbt_item")) {
+                                item = NBTItem.convertNBTtoItem(new NBTContainer(dropSection.getString("nbt_item")));
+                            } else if (dropSection.contains("item")) {
+                                Material material = Material.valueOf(dropSection.getString("item").toUpperCase());
+                                item = new ItemStack(material);
+                            } else {
+                                console.warning(ChatColor.YELLOW + "No item is specified for the custom block \"" + id + "\" in the drop section \"" + drop + "\" in the file " + path);
+                                continue;
+                            }
+
+                            int count = 1;
+                            if (dropSection.contains("count")) {
+                                count = dropSection.getInt("count");
+                            } else if (dropSection.contains("min") && dropSection.contains("max")) {
+                                int max = dropSection.getInt("max");
+                                int min = dropSection.getInt("min");
+                                count = (int) (Math.random() * (max - min + 1) + min);
+                            }
+                            item.setAmount(count);
+
+                            if (dropSection.contains("set-xp")) {
+                                xpToDrop = dropSection.getDouble("set-xp");
+                            }
+                            if (dropSection.contains("add-xp")) {
+                                xpToDrop += dropSection.getDouble("add-xp");
+                            }
+                            if (dropSection.contains("multiply-xp")) {
+                                xpToDrop *= dropSection.getDouble("multiply-xp");
+                            }
+
+                            newDrops.add(item);
                         }
                     }
+                    originalDrops.clear();
+
+                    int xpToDropInt = (int) xpToDrop;
+                    if (xpToDropInt > 0) {
+                        ((ExperienceOrb) loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB)).setExperience(xpToDropInt);
+                    }
+                    newDrops.forEach(item -> loc.getWorld().dropItemNaturally(loc, item));
+
+                    String successMsg = "The custom block \"" + id + "\" successfully dropped ";
+                    if (debug >= 3) {
+                        if (newDrops.isEmpty()) {
+                            successMsg += "no items";
+                        } else {
+                            successMsg += "the items " + newDrops.toString().replace("[", "").replace("]", "");
+                        }
+
+                        successMsg += " and " + xpToDropInt + " xp";
+
+                        console.info(ChatColor.LIGHT_PURPLE + successMsg);
+                    }
+                } else {
+                    console.warning(ChatColor.YELLOW + "The drops for the custom block \"" + id + "\" were not changed because the \"enabled\" option is set to false in its drops section");
                 }
-        );
+            } else {
+                console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its drop section does not exist");
+            }
+        } else {
+            console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its definition does not exist in the file " + path);
+        }
     }
 
     /*public void test(ItemStack item) {
@@ -445,129 +476,100 @@ public class CustomBlockHandler implements Listener {
                 event.setExpToDrop(0);
             }
         }
-    } 
-    
+    }
+
     //custom block dropping logic based on options in a custom block's "block.drops" definition section
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void blockDropItem(BlockDropItemEvent event) {
         Player player = event.getPlayer();
         Location loc = event.getBlock().getLocation();
         List<Item> originalDrops = event.getItems();
-        List<ItemStack> newDrops = new ArrayList<>();
 
         String id = getLoggedStringFromLocation(loc);
-        String path = idToFilePath.get(id);
 
         if (id != null) {
             unlogBlock(loc, player);
 
             if (player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty()) {
-                YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
-                if (yaml == null) {
-                    console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because the source file " + path + " does not exist");
-                    return;
-                }
-                if (yaml.isConfigurationSection(id)) {
-                    ConfigurationSection idSection = yaml.getConfigurationSection(id);
-                    if (idSection.isConfigurationSection("block.drops")) {
-                        ConfigurationSection parentDropsSection = idSection.getConfigurationSection("block.drops");
-
-                        if (parentDropsSection.getBoolean("enabled", true)) {
-                            Set<String> drops = parentDropsSection.getKeys(false);
-                            double xpToDrop = 0;
-
-                            drop:
-                            for (String drop : drops) {
-                                if (parentDropsSection.isConfigurationSection(drop)) {
-                                    ConfigurationSection dropSection = parentDropsSection.getConfigurationSection(drop);
-                                    if (dropSection.contains("conditions")) {
-                                        for (String condition : dropSection.getStringList("conditions")) {
-                                            Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(condition));
-                                            if (enchantment == null) {
-                                                console.severe(ChatColor.RED + "The enchantment \"" + enchantment.getKey() + "\" is not a valid enchantment");
-                                                continue drop;
-                                            } else if (!player.getInventory().getItemInMainHand().containsEnchantment(Enchantment.getByKey(NamespacedKey.minecraft(condition)))) {
-                                                continue drop;
-                                            }
-                                        }
-                                    }
-
-                                    if (dropSection.contains("chance")) {
-                                        double chance = dropSection.getDouble("chance");
-                                        if (chance > 0 && chance < 1) {
-                                            if (Math.random() >= chance) {
-                                                continue;
-                                            }
-                                        } else {
-                                            console.severe(ChatColor.RED + "The \"chance\" tag in the drop section \"" + drop + "\" for the custom block \"" + id + "\" must be greater than 0 and less than 1");
-                                        }
-                                    }
-
-                                    ItemStack item;
-                                    if (dropSection.contains("nbt_item")) {
-                                        item = NBTItem.convertNBTtoItem(new NBTContainer(dropSection.getString("nbt_item")));
-                                    } else if (dropSection.contains("item")) {
-                                        BlockData blockData = Bukkit.createBlockData(dropSection.getString("item"));
-                                        item = new ItemStack(blockData.getMaterial());
-                                    } else {
-                                        console.warning(ChatColor.YELLOW + "No item is specified for the custom block \"" + id + "\" in the drop section \"" + drop + "\" in the file " + path);
-                                        continue;
-                                    }
-
-                                    int count = 1;
-                                    if (dropSection.contains("count")) {
-                                        count = dropSection.getInt("count");
-                                    } else if (dropSection.contains("min") && dropSection.contains("max")) {
-                                        int max = dropSection.getInt("max");
-                                        int min = dropSection.getInt("min");
-                                        count = (int) (Math.random() * (max - min + 1) + min);
-                                    }
-                                    item.setAmount(count);
-
-                                    if (dropSection.contains("set-xp")) {
-                                        xpToDrop = dropSection.getDouble("set-xp");
-                                    }
-                                    if (dropSection.contains("add-xp")) {
-                                        xpToDrop += dropSection.getDouble("add-xp");
-                                    }
-                                    if (dropSection.contains("multiply-xp")) {
-                                        xpToDrop *= dropSection.getDouble("multiply-xp");
-                                    }
-
-                                    newDrops.add(item);
-                                }
-                            }
-                            originalDrops.clear();
-
-                            int xpToDropInt = (int) xpToDrop;
-                            if (xpToDropInt > 0) {
-                                ((ExperienceOrb) loc.getWorld().spawnEntity(loc, EntityType.EXPERIENCE_ORB)).setExperience(xpToDropInt);
-                            }
-                            newDrops.forEach(item -> loc.getWorld().dropItemNaturally(loc, item));
-
-                            String successMsg = "The custom block \"" + id + "\" successfully dropped ";
-                            if (debug >= 3) {
-                                if (newDrops.isEmpty()) {
-                                    successMsg += "no items";
-                                } else {
-                                    successMsg += "the items " + newDrops.toString().replace("[", "").replace("]", "");
-                                }
-
-                                successMsg += " and " + xpToDropInt + " xp";
-
-                                console.info(ChatColor.LIGHT_PURPLE + successMsg);
-                            }
-                        } else {
-                            console.warning(ChatColor.YELLOW + "The drops for the custom block \"" + id + "\" were not changed because the \"enabled\" option is set to false in its drops section");
-                        }
-                    } else {
-                        console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its drop section does not exist");
-                    }
-                } else {
-                    console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its definition does not exist in the file " + path);
-                }
+                spawnCustomBlockDrops(id, loc, originalDrops, player);
             }
         }
+    }
+
+    //listens for MAP_CHUNK (ChunkData) packets and calls the block loader for that chunk after a delay specified in the customBlockConfig
+    public void chunkLoadListener() {
+        pm.addPacketListener(
+                new PacketAdapter(main, ListenerPriority.MONITOR, PacketType.Play.Server.MAP_CHUNK) {
+
+                    @Override
+                    public void onPacketSending(PacketEvent event) {
+
+                        Player player = event.getPlayer();
+                        int chunkX = event.getPacket().getIntegers().readSafely(0);
+                        int chunkZ = event.getPacket().getIntegers().readSafely(1);
+                        Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
+
+                        if (chunk.isLoaded()) {
+                            Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(main, () -> {
+                                int blocks = loadCustomBlocksFromChunkFile(player, chunk);
+
+                                if (debug >= 1 && blocks != 0) {
+                                    console.info(ChatColor.DARK_GREEN + "Loaded " + blocks + " blocks in the chunk at " + chunkX + ", " + chunkZ + " by " + player.getName());
+                                }
+                            }, customBlockConfig.getLong("Global.packet-send-delay"));
+                        }
+                    }
+                }
+        );
+    }
+
+    //listens for BlockChange packets and (to do) if its position is logged, edits the packet to contain the logged BlockData
+    public void blockChangeListener() {
+        pm.addPacketListener(
+                new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server.BLOCK_CHANGE) {
+
+                    @Override
+                    public void onPacketSending(PacketEvent event) {
+                        Player player = event.getPlayer();
+                        PacketContainer packet = event.getPacket();
+                        WrappedBlockData wrappedBlockData = packet.getBlockData().readSafely(0);
+                        BlockPosition position = packet.getBlockPositionModifier().readSafely(0);
+
+                        World world = player.getWorld();
+                        int x = position.getX();
+                        int y = position.getY();
+                        int z = position.getZ();
+                        Block block = world.getBlockAt(x, y, z);
+
+                        //player.sendMessage(ChatColor.DARK_PURPLE + "BC:  " + position + "   " + data.getType());
+
+                        String locString = world.getName() + ", " + x + ", " + y + ", " + z;
+                        String id = getLoggedStringFromLocation(new Location(world, x, y, z));
+                        if (id != null) {
+                            //commented because this unlogs the block before the event handlers can read it
+                            if (/*wrappedBlockData.getType().isEmpty()*/block.getType().isEmpty()) {
+                                unlogBlock(new Location(world, x, y, z), player);
+                            } else {
+                                BlockData disguisedData = createSyncedBlockData(block.getBlockData().getAsString(), id, true);
+
+                                if (disguisedData == null) {
+                                    return;
+                                }
+
+                                if (disguisedData.getMaterial().equals(Material.AIR) && debug >= 3) {
+                                    console.warning(ChatColor.YELLOW + "Did not edit the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " because its source \"disguised_block\" is empty");
+                                } else {
+                                    packet.getBlockData().write(0, WrappedBlockData.createData(disguisedData));
+
+                                    if (debug >= 4) {
+                                        console.info(ChatColor.AQUA + "Edited the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " by " + player.getName());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        );
     }
 
     //reloads the main and custom block configs, the custom block definition files, and the debug field
