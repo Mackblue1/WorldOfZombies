@@ -6,7 +6,7 @@ The primary custom plugin for the World of Zombies Minecraft server.
 
 1.1.2
 
-### Server Version
+### Native Server Version
 
 1.16.5
 
