@@ -1,3 +1,7 @@
+1.1.3     _/__/21
+    - Improved "item" custom block drop tag to include anything in the Material class
+    - Added functionality to calculate custom block drops for blocks that break because from explosions
+
 1.1.2     7/26/21
     - Overhauled command syntax - all commands are now:  /woz [command] [args]
         - For example,  /wozreload  is now  /woz reload  , and  /wozdatabase delete [world]  is now  /woz database delete [world]
