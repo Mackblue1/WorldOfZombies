@@ -23,7 +23,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.BlockExpEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.ItemStack;
 
 
@@ -235,7 +237,11 @@ public class CustomBlockHandler implements Listener {
             if (yaml.contains(path)) {
                 yaml.set(path, null);
                 if (debug >= 2) {
-                    console.info(ChatColor.AQUA + player.getName() + " un-logged the custom block \"" + id + "\" at " + locString);
+                    if (player != null) {
+                        console.info(ChatColor.AQUA + player.getName() + " un-logged the custom block \"" + id + "\" at " + locString);
+                    } else {
+                        console.info(ChatColor.AQUA + "The custom block \"" + id + "\" at " + locString + " was un-logged");
+                    }
                 }
 
                 try {
@@ -275,15 +281,19 @@ public class CustomBlockHandler implements Listener {
                     for (String drop : drops) {
                         if (parentDropsSection.isConfigurationSection(drop)) {
                             ConfigurationSection dropSection = parentDropsSection.getConfigurationSection(drop);
-                            if (player != null && dropSection.contains("conditions")) {
-                                for (String condition : dropSection.getStringList("conditions")) {
-                                    Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(condition));
-                                    if (enchantment == null) {
-                                        console.severe(ChatColor.RED + "The enchantment \"" + enchantment.getKey() + "\" is not a valid enchantment");
-                                        continue drop;
-                                    } else if (!player.getInventory().getItemInMainHand().containsEnchantment(Enchantment.getByKey(NamespacedKey.minecraft(condition)))) {
-                                        continue drop;
+                            if (dropSection.contains("conditions")) {
+                                if (player != null) {
+                                    for (String condition : dropSection.getStringList("conditions")) {
+                                        Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(condition));
+                                        if (enchantment == null) {
+                                            console.severe(ChatColor.RED + "The enchantment \"" + enchantment.getKey() + "\" is not a valid enchantment");
+                                            continue drop;
+                                        } else if (!player.getInventory().getItemInMainHand().containsEnchantment(Enchantment.getByKey(NamespacedKey.minecraft(condition)))) {
+                                            continue drop;
+                                        }
                                     }
+                                } else {
+                                    continue;
                                 }
                             }
 
@@ -332,7 +342,9 @@ public class CustomBlockHandler implements Listener {
                             newDrops.add(item);
                         }
                     }
-                    originalDrops.clear();
+                    if (originalDrops != null) {
+                        originalDrops.clear();
+                    }
 
                     int xpToDropInt = (int) xpToDrop;
                     if (xpToDropInt > 0) {
@@ -384,7 +396,7 @@ public class CustomBlockHandler implements Listener {
     }*/
 
     //when a player places a block, log the location and disguised_block, and set the server block to actual_data if it exists in the definition
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void blockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Chunk chunk = block.getChunk();
@@ -453,19 +465,9 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    //NOT USED - functionality of un-logging blocks moved to blockDropItem()
-    //when a player breaks a block, if the block is logged, un-log the block
-    /*@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void blockBreak(BlockBreakEvent event) {
-        console.info(ChatColor.DARK_PURPLE + "bb");
-        if (getLoggedStringFromLocation(event.getBlock().getLocation()) != null) {
-            unlogBlock(event.getBlock().getLocation(), event.getPlayer());
-        }
-    }*/
-
-    //cancels any xp that would normally drop from a custom block being broken (like a spawner)
     @EventHandler
     public void blockDropXpEvent(BlockExpEvent event) {
+        //cancels any xp that would normally drop from a custom block being broken (like a spawner)
         String id = getLoggedStringFromLocation(event.getBlock().getLocation());
         String path = idToFilePath.get(id);
         if (event.getExpToDrop() != 0 && id != null) {
@@ -474,15 +476,15 @@ public class CustomBlockHandler implements Listener {
                 event.setExpToDrop(0);
             }
         }
+
     }
 
     //custom block dropping logic based on options in a custom block's "block.drops" definition section
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void blockDropItem(BlockDropItemEvent event) {
         Player player = event.getPlayer();
         Location loc = event.getBlock().getLocation();
         List<Item> originalDrops = event.getItems();
-
         String id = getLoggedStringFromLocation(loc);
 
         if (id != null) {
@@ -493,6 +495,36 @@ public class CustomBlockHandler implements Listener {
             }
         }
     }
+
+    @EventHandler
+    public void entityExplode(EntityExplodeEvent event) {
+        List<Block> blocks = event.blockList();
+
+        while (blocks.iterator().hasNext()) {
+            Block block = blocks.iterator().next();
+            Location loc = block.getLocation();
+            String id = getLoggedStringFromLocation(loc);
+
+            if (id != null) {
+                //this works, but is there a better way to remove original exploded block drops?
+                blocks.remove(block);
+                block.setType(Material.AIR);
+
+                unlogBlock(loc, null);
+                spawnCustomBlockDrops(id, loc, null, null);
+            }
+        }
+    }
+
+    /*NOT USED - functionality of un-logging blocks moved to blockDropItem()
+    when a player breaks a block, if the block is logged, un-log the block*/
+    /*@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void blockBreak(BlockBreakEvent event) {
+        console.info(ChatColor.DARK_PURPLE + "bb");
+        if (getLoggedStringFromLocation(event.getBlock().getLocation()) != null) {
+            unlogBlock(event.getBlock().getLocation(), event.getPlayer());
+        }
+    }*/
 
     //listens for MAP_CHUNK (ChunkData) packets and calls the block loader for that chunk after a delay specified in the customBlockConfig
     public void chunkLoadListener() {
@@ -544,7 +576,7 @@ public class CustomBlockHandler implements Listener {
                         String locString = world.getName() + ", " + x + ", " + y + ", " + z;
                         String id = getLoggedStringFromLocation(new Location(world, x, y, z));
                         if (id != null) {
-                            //commented because this unlogs the block before the event handlers can read it
+                            //commented because this un-logs the block before the event handlers can read it
                             if (/*wrappedBlockData.getType().isEmpty()*/block.getType().isEmpty()) {
                                 unlogBlock(new Location(world, x, y, z), player);
                             } else {

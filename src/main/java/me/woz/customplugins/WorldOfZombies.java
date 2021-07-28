@@ -60,13 +60,13 @@ public class WorldOfZombies extends JavaPlugin {
         getCommand("worldofzombies").setTabCompleter(new SCommandTab(this));
         getCommand("bb").setExecutor(new TestCommand(this, customBlockHandler));
 
-        console.info(ChatColor.GREEN + "World of Zombies custom plugin loaded successfully");
+        console.info(ChatColor.GREEN + "World of Zombies custom plugin loaded successfully!");
         console.info("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾");
     }
 
     @Override
     public void onDisable() {
-        console.info(ChatColor.GREEN + "World of Zombies custom plugin unloaded successfully");
+        console.info(ChatColor.GREEN + "World of Zombies custom plugin unloaded successfully!");
     }
 
     //creates and loads core config files
