@@ -1,6 +1,9 @@
 1.1.3     _/__/21
     - Improved "item" custom block drop tag to include anything in the Material class
+    - Removed the requirement of  "nbt-item"  or  "item"  in an individual drop section
+    - Added functionality to calculate which custom blocks will drop items based on the "yield" of explosions
     - Added functionality to calculate custom block drops for blocks that break because from explosions
+        - Added  "options.blast-resistant"  to not break in explosions
 
 1.1.2     7/26/21
     - Overhauled command syntax - all commands are now:  /woz [command] [args]

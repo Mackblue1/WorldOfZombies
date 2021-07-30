@@ -23,7 +23,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.BlockExpEvent;
-import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.ItemStack;
@@ -46,7 +45,7 @@ public class CustomBlockHandler implements Listener {
     private int debug;
 
     //private Map<Player, MultiBlockChangeWrap[][][]> subChunkList = new HashMap<>();
-    private final Map<String, String> idToFilePath;
+    private final Map<String, String> idToDefinitionFilePath;
 
     //constructor to initialize fields and load custom block config file
     public CustomBlockHandler(WorldOfZombies main, ProtocolManager pm) {
@@ -54,7 +53,7 @@ public class CustomBlockHandler implements Listener {
         this.console = main.getLogger();
         this.pm = pm;
 
-        idToFilePath = new HashMap<>();
+        idToDefinitionFilePath = new HashMap<>();
 
         reloadConfigs();
         chunkLoadListener();
@@ -136,10 +135,32 @@ public class CustomBlockHandler implements Listener {
         return blockCount;
     }
 
+    //wrapper method for destroying a custom block: un-logs the block, drops custom items, plays custom break sound, and spawns custom break particles
+    public void destroyCustomBlock(Location loc, boolean dropItems, Player player, List<Item> originalDrops) {
+        Block block = loc.getWorld().getBlockAt(loc);
+        String id = getLoggedStringFromLocation(loc);
+
+        if (id != null) {
+            if (!block.getType().isEmpty()) {
+                block.setType(Material.AIR);
+            }
+
+            unlogBlock(loc, player);
+
+            if (dropItems) {
+                spawnCustomBlockDrops(id, loc, originalDrops, player);
+            }
+
+            //play custom break sound
+
+            //spawn custom break particles
+        }
+    }
+
     //merges disguised_block or actual_block BlockData for a custom block with the sync states in originalBlockDataString
     //null return value indicates an error, and a BlockData with a Material of AIR indicates that the source disguised_block or actual_block does not exist
     public BlockData createSyncedBlockData(String originalBlockDataString, String id, boolean disguise) {
-        YamlConfiguration sourceYaml = main.loadYamlFromFile(new File(idToFilePath.get(id)), false, false, debug, "");
+        YamlConfiguration sourceYaml = main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "");
         if (sourceYaml == null) {
             console.severe(ChatColor.RED + "The custom block \"" + id + "\" could not be loaded because its source file does not exist");
             return null;
@@ -214,7 +235,7 @@ public class CustomBlockHandler implements Listener {
         YamlConfiguration yaml = main.loadYamlFromFile(file, false, false, debug, "");
 
         String logPath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
-        String locString = world.getName() + ", " + x + ", " + y + ", " + z;
+        //String locString = world.getName() + ", " + x + ", " + y + ", " + z;
         if (yaml != null) {
             if (yaml.contains(logPath)) {
                 return yaml.getString(logPath);
@@ -260,9 +281,10 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
+    //drops items and/or xp specified in the block.drops section of a custom block definition
     public void spawnCustomBlockDrops(String id, Location loc, List<Item> originalDrops, Player player) {
         List<ItemStack> newDrops = new ArrayList<>();
-        String path = idToFilePath.get(id);
+        String path = idToDefinitionFilePath.get(id);
         YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
         if (yaml == null) {
             console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because the source file " + path + " does not exist");
@@ -405,7 +427,7 @@ public class CustomBlockHandler implements Listener {
         ItemStack item = event.getItemInHand();
         NBTItem nbtItem = new NBTItem(item);
         String id = nbtItem.getString("CustomBlock");
-        String sourceFilePath = idToFilePath.get(id);
+        String sourceFilePath = idToDefinitionFilePath.get(id);
 
         int x = block.getX();
         int y = block.getY();
@@ -465,11 +487,11 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
+    //cancels any xp that would normally drop from a custom block being broken (like an ore block)
     @EventHandler
     public void blockDropXpEvent(BlockExpEvent event) {
-        //cancels any xp that would normally drop from a custom block being broken (like a spawner)
         String id = getLoggedStringFromLocation(event.getBlock().getLocation());
-        String path = idToFilePath.get(id);
+        String path = idToDefinitionFilePath.get(id);
         if (event.getExpToDrop() != 0 && id != null) {
             YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
             if (yaml.getBoolean(id + ".block.drops.enabled", true) && yaml.getBoolean(id + ".block.drops.cancel-xp")) {
@@ -485,20 +507,15 @@ public class CustomBlockHandler implements Listener {
         Player player = event.getPlayer();
         Location loc = event.getBlock().getLocation();
         List<Item> originalDrops = event.getItems();
-        String id = getLoggedStringFromLocation(loc);
 
-        if (id != null) {
-            unlogBlock(loc, player);
-
-            if (player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty()) {
-                spawnCustomBlockDrops(id, loc, originalDrops, player);
-            }
-        }
+        destroyCustomBlock(loc, player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty(), player, originalDrops);
     }
 
+    //handles custom block drops during explosions
     @EventHandler
     public void entityExplode(EntityExplodeEvent event) {
         List<Block> blocks = event.blockList();
+        double yield = event.getYield();
 
         while (blocks.iterator().hasNext()) {
             Block block = blocks.iterator().next();
@@ -506,12 +523,15 @@ public class CustomBlockHandler implements Listener {
             String id = getLoggedStringFromLocation(loc);
 
             if (id != null) {
-                //this works, but is there a better way to remove original exploded block drops?
                 blocks.remove(block);
-                block.setType(Material.AIR);
 
-                unlogBlock(loc, null);
-                spawnCustomBlockDrops(id, loc, null, null);
+                if (!main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "").getBoolean(id + ".block.options.blast-resistant", false)) {
+                    //removing block from explosion and setting to air works, but is there a better way to remove original exploded block drops?
+
+                    if (yield > 0) {
+                        destroyCustomBlock(loc, Math.random() < yield, null, null);
+                    }
+                }
             }
         }
     }
@@ -621,7 +641,7 @@ public class CustomBlockHandler implements Listener {
                 YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
                 yaml.getKeys(false).forEach(key -> {
                     if (yaml.isConfigurationSection(key)) {
-                        idToFilePath.put(key, file.getPath());
+                        idToDefinitionFilePath.put(key, file.getPath());
                     }
                 });
             }

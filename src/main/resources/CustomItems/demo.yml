@@ -1,8 +1,8 @@
 #
 #  This is an example of 2 different custom block definitions and their drops
 #  Custom drops are not required, and blocks will work normally with just "actual_block" and "disguised_block"
+#  All tags in a definition are optional except "actual_block" and "disguised_block" ("drops.enabled" is required if the rest of the "drops" is empty)
 #  Inside of the parent "drops" section, there is no restriction on the amount of child drop sections or their names
-#  The only required tag for an individual drop section is "nbt_item" or "item", and all other tags are optional
 #  Each tag outside the parent "drops" section cannot appear more than once, and tags inside a child drop section cannot appear more than once in a single drop section
 #
 
@@ -26,13 +26,15 @@ demo_block:
       - type
       - axis
 
+    options:
+      #  Stops a block from being broken by all types of explosions, defaults to "false"
+      blast-resistant: false
+
     drops:
-      #  This is optional and is intended to be used like the block "no_drops_block" included in this file
-      #  If it's not included then it will default to "true", and if it's "false" then the original drops will not be changed
+      #  This is intended to be used like the block "no_drops_block" included in this file, defaults to "true", and if it's "false" then the original drops will not be changed
       enabled: true
 
-      #  This is optional and will cancel any xp normally dropped by a broken block (like a mob spawner)
-      #  If it's not included then it will default to "false"
+      #  Cancels any xp normally dropped by a broken block (like an ore block), defaults to "false"
       cancel-xp: true
 
       axe:
