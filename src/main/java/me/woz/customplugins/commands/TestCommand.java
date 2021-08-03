@@ -1,8 +1,6 @@
 package me.woz.customplugins.commands;
 
-import com.comphenix.protocol.wrappers.WrappedBlockData;
 import com.destroystokyo.paper.entity.ai.*;
-import de.tr7zw.nbtapi.NBTItem;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.*;
@@ -16,7 +14,6 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.Collection;
 import java.util.EnumSet;
@@ -47,8 +44,12 @@ public class TestCommand implements CommandExecutor {
             Chunk chunk = player.getChunk();
 
             Block target = player.getTargetBlock(10);
-            BlockData data = target.getBlockData();
-            player.sendMessage(ChatColor.GREEN + "" + target.getDrops(player.getInventory().getItemInMainHand(), player));
+            //BlockData data = target.getBlockData();
+
+            customBlockHandler.moveLoggedBlock(target.getLocation(), target.getLocation().add(0, 1, 0));
+
+            //player.sendMessage(ChatColor.GREEN + "" + target.getDrops(player.getInventory().getItemInMainHand(), player));
+
             /*player.sendMessage(ChatColor.AQUA + "BlockData string:  " + data.getAsString());
             player.sendMessage(ChatColor.YELLOW + "WrappedBlockData type:  " + WrappedBlockData.createData(data).getType().toString());
             player.sendMessage(ChatColor.DARK_PURPLE + "id:  " + customBlockHandler.getLoggedStringFromLocation(target.getLocation()));

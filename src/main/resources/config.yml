@@ -1,7 +1,7 @@
 #
 #  To enable a module, set its value here to "true". To disable a module, set its value to "false".
 #  For configuration options for each individual module, use the files with the name of the module.
-#  For example, to edit the Custom Block module's settings, go to the file "custom_block.yml".
+#  For example, to edit the Custom Block module's settings, go to the file "custom-block.yml".
 #
 
 Modules:

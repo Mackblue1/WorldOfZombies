@@ -1,25 +1,26 @@
 #
 #  This is an example of 2 different custom block definitions and their drops
-#  Custom drops are not required, and blocks will work normally with just "actual_block" and "disguised_block"
-#  All tags in a definition are optional except "actual_block" and "disguised_block" ("drops.enabled" is required if the rest of the "drops" is empty)
+#  Custom drops are not required, and blocks will work normally with just "actual-block" and "disguised-block"
+#  All tags in a definition are optional except "actual-block" and "disguised-block" ("drops.enabled" is required if the rest of the "drops" is empty)
 #  Inside of the parent "drops" section, there is no restriction on the amount of child drop sections or their names
 #  Each tag outside the parent "drops" section cannot appear more than once, and tags inside a child drop section cannot appear more than once in a single drop section
 #
 
-demo_block:
+demo-block:
   #  As of version 1.1.2, functionality for this option has not been added but is planned for future versions
   item: '{id:"minecraft:emerald",Count:1b}'
   block:
-    #  "actual_block" and "disguised_block" here are the same as the tags on custom block items in version 1.1.1
-    #  If "actual_block" is empty, the server-side will not be changed when the custom block is placed
-    actual_block: iron_block
+    #  "actual-block" and "disguised-block" here are the same as the tags on custom block items in version 1.1.1
+    #  If "actual-block" is empty, the server-side will not be changed when the custom block is placed
+    actual-block: oak_slab
 
-    #  If "disguised_block" is empty, the client-side block will be the same as the server-side block
-    disguised_block: birch_slab[waterlogged=true]
+    #  If "disguised-block" is empty, the client-side block will be the same as the server-side block
+    disguised-block: birch_slab[waterlogged=true]
 
-    #  The code handling "sync_states" will not succeed when "actual_block" (or the normally placed block if "actual_block" is empty) supports a state that "disguised_block" does not.
-    #  For example, an "actual_block" of a log with the "facing" tag and a "disguised_block" of a diamond block would throw an error because the diamond block cannot support the "facing" tag
-    sync_states:
+    #  Syncs the vanilla block states between the vanilla placed block, "actual-block", and "disguised-block"
+    #  The code handling "sync-states" will not succeed when "actual-block" (or the normally placed block if "actual-block" is empty) supports a state that "disguised-block" does not.
+    #  For example, an "actual-block" of a log with the "facing" tag and a "disguised-block" of a diamond block would throw an error because the diamond block cannot support the "facing" tag
+    sync-states:
       - facing
       - half
       - shape
@@ -28,10 +29,16 @@ demo_block:
 
     options:
       #  Stops a block from being broken by all types of explosions, defaults to "false"
-      blast-resistant: false
+      blast-resistant: true
+      #  Causes a block to break when pushed by pistons, defaults to "false"
+      piston-breakable: false
+      #  Cancels piston push events if enabled, defaults to "false"
+      cancel-piston-push: true
+      #  Cancels piston pull events if enabled, defaults to "false"
+      cancel-piston-pull: true
 
     drops:
-      #  This is intended to be used like the block "no_drops_block" included in this file, defaults to "true", and if it's "false" then the original drops will not be changed
+      #  This is intended to be used like the block "no-drops-block" included in this file, defaults to "true", and if it's "false" then the original drops will not be changed
       enabled: true
 
       #  Cancels any xp normally dropped by a broken block (like an ore block), defaults to "false"
@@ -43,8 +50,8 @@ demo_block:
         conditions:
           - silk_touch
 
-        #  "nbt_item" has priority over "item", so "item" will always be ignored if "nbt_item" appears in the same drop section
-        nbt_item: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
+        #  "nbt-item" has priority over "item", so "item" will always be ignored if "nbt-item" appears in the same drop section
+        nbt-item: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
 
         #  Sets the amount to drop of an item to this value
         #  "count" has priority over "min" & "max", so "min" & "max" will always be ignored if "count" appears in the same drop section
@@ -65,7 +72,7 @@ demo_block:
         #  Multiplies the dropped xp by this value
         multiply-xp: 1.5
 
-        #  This tag should only contain a BlockData string, which is the same type of string as "actual_data" and "disguised_data"
+        #  This tag should only contain a BlockData string, which is the same type of string as "actual-data" and "disguised-data"
         item: dirt
 
         #  Sets the amount to drop of an item to a random number between these values (inclusive)
@@ -74,14 +81,14 @@ demo_block:
         max: 4
       cake:
         #  As of version 1.1.2, functionality for this option has not been added but is planned for future versions
-        custom_item:
-          id: zombie_cake
+        custom-item:
+          id: zombie-cake
           nbt: '{DroppedFromZombieBlock:1b}'
           count: 2
 
-no_drops_block:
+no-drops-block:
   item: '{id:"minecraft:dirt"}'
   block:
-    disguised_block: gold_block
+    disguised-block: gold_block
     drops:
       enabled: false

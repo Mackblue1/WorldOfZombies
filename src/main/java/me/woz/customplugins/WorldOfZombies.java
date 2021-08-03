@@ -90,9 +90,9 @@ public class WorldOfZombies extends JavaPlugin {
             console.severe(ChatColor.RED + "The main config file could not be loaded");
         }
 
-        customBlockConfigFile = new File(getDataFolder(), "custom_block.yml");
+        customBlockConfigFile = new File(getDataFolder(), "custom-block.yml");
         if (!customBlockConfigFile.exists()) {
-            saveResource("custom_block.yml", false);
+            saveResource("custom-block.yml", false);
         }
         customBlockConfig = new YamlConfiguration();
         try {

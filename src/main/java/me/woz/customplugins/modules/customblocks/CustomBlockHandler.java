@@ -12,6 +12,7 @@ import me.woz.customplugins.util.MultiBlockChangeWrap;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -21,9 +22,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockDropItemEvent;
-import org.bukkit.event.block.BlockExpEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -62,7 +61,7 @@ public class CustomBlockHandler implements Listener {
     }
 
     //adds all the blocks in the file for a chunk to their respective MultiBlockChange packets based on subChunk section
-    public int loadCustomBlocksFromChunkFile(Player player, Chunk chunk) {
+    public int loadLoggedBlocksInChunk(Player player, Chunk chunk) {
         int blockCount = 0;
         int chunkX = chunk.getX();
         int chunkZ = chunk.getZ();
@@ -117,7 +116,7 @@ public class CustomBlockHandler implements Listener {
                         }
 
                         if (disguisedData.getMaterial().equals(Material.AIR) && debug >= 3) {
-                            console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because its source \"disguised_block\" is empty");
+                            console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
                         } else {
                             packet.addBlock(loc, disguisedData);
                             blockCount++;
@@ -157,8 +156,8 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    //merges disguised_block or actual_block BlockData for a custom block with the sync states in originalBlockDataString
-    //null return value indicates an error, and a BlockData with a Material of AIR indicates that the source disguised_block or actual_block does not exist
+    //merges disguised-block or actual-block BlockData for a custom block with the sync states in originalBlockDataString
+    //null return value indicates an error, and a BlockData with a Material of AIR indicates that the source disguised-block or actual-block does not exist
     public BlockData createSyncedBlockData(String originalBlockDataString, String id, boolean disguise) {
         YamlConfiguration sourceYaml = main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "");
         if (sourceYaml == null) {
@@ -172,7 +171,7 @@ public class CustomBlockHandler implements Listener {
         }
         ConfigurationSection blockSection = sourceYaml.getConfigurationSection(id + ".block");
 
-        String path = disguise ? "disguised_block" : "actual_block";
+        String path = disguise ? "disguised-block" : "actual-block";
 
         if (sourceYaml.contains(id + ".block." + path)) {
             BlockData newData;
@@ -187,7 +186,7 @@ public class CustomBlockHandler implements Listener {
                 return null;
             }
 
-            List<String> syncList = blockSection.getStringList("sync_states");
+            List<String> syncList = blockSection.getStringList("sync-states");
             String syncString = newData.getMaterial().toString().toLowerCase() + "[";
 
             for (String state : syncList) {
@@ -213,7 +212,7 @@ public class CustomBlockHandler implements Listener {
                 BlockData syncData = Bukkit.createBlockData(syncString);
                 return newData.merge(syncData);
             } catch (IllegalArgumentException e) {
-                console.severe(ChatColor.RED + "Could not sync the states of the custom block \"" + id + "\" because the \"disguised_block\" is incompatible with one or more tags of the server-side block. " + e.getMessage());
+                console.severe(ChatColor.RED + "Could not sync the states of the custom block \"" + id + "\" because the \"disguised-block\" is incompatible with one or more tags of the server-side block. " + e.getMessage());
                 return null;
             }
         } else {
@@ -236,10 +235,8 @@ public class CustomBlockHandler implements Listener {
 
         String logPath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
         //String locString = world.getName() + ", " + x + ", " + y + ", " + z;
-        if (yaml != null) {
-            if (yaml.contains(logPath)) {
-                return yaml.getString(logPath);
-            }
+        if (yaml != null && yaml.contains(logPath)) {
+            return yaml.getString(logPath);
         }
         return null;
     }
@@ -290,6 +287,7 @@ public class CustomBlockHandler implements Listener {
             console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because the source file " + path + " does not exist");
             return;
         }
+
         if (yaml.isConfigurationSection(id)) {
             ConfigurationSection idSection = yaml.getConfigurationSection(id);
             if (idSection.isConfigurationSection("block.drops")) {
@@ -331,8 +329,8 @@ public class CustomBlockHandler implements Listener {
                             }
 
                             ItemStack item;
-                            if (dropSection.contains("nbt_item")) {
-                                item = NBTItem.convertNBTtoItem(new NBTContainer(dropSection.getString("nbt_item")));
+                            if (dropSection.contains("nbt-item")) {
+                                item = NBTItem.convertNBTtoItem(new NBTContainer(dropSection.getString("nbt-item")));
                             } else if (dropSection.contains("item")) {
                                 Material material = Material.valueOf(dropSection.getString("item").toUpperCase());
                                 item = new ItemStack(material);
@@ -397,29 +395,85 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    /*public void test(ItemStack item) {
-        File file = new File(MAIN.getDataFolder(), "test.yml");
-        YamlConfiguration yaml = MAIN.loadYamlFromFile(file, true, false, debug, "");
+    //moves the logged location of a logged block (mainly for piston events)
+    public void moveLoggedBlock(Location loc, Location newLoc) {
+        World world = loc.getWorld();
+        int x = loc.getBlockX();
+        int y = loc.getBlockY();
+        int z = loc.getBlockZ();
+        int chunkX = x >> 4;
+        int chunkZ = z >> 4;
+        int subChunkY = y >> 4;
 
-        int i = 0;
-        while (yaml.contains("test.item" + i)) {
-            i++;
+        File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunkX + "." + chunkZ + ".yml");
+        YamlConfiguration yaml = main.loadYamlFromFile(file, false, false, debug, "");
+
+        String logPath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
+        if (yaml != null && yaml.contains(logPath)) {
+            String id = getLoggedStringFromLocation(loc);
+            yaml.set(logPath, null);
+
+            String newLogPath = "subChunk" + subChunkY + "." + newLoc.getBlockX() + "_" + newLoc.getBlockY() + "_" + newLoc.getBlockZ();
+            yaml.set(newLogPath, id);
+            try {
+                yaml.save(file);
+            } catch (IOException e) {
+                console.severe(ChatColor.RED + "Could not save the file " + file.getPath() + " while trying to move the logged custom block at " + logPath);
+            }
         }
+    }
 
-        //yaml.set("test.item" + i, item);
-        yaml.set("test.item" + i, NBTItem.convertItemtoNBT(item).toString());
+    // FIXME: 7/31/2021 how to send BC packet? send new BC in moveLoggedBlock() to trigger BC listener and modify to logged info?
+    //handles custom blocks that are being pushed/pulled by a piston
+    public List<Block> handleMovedBlocks(List<Block> blocks, BlockFace blockFace, boolean pushing) {
+        List<Block> cancelled = new ArrayList<>();
+        Map<Location, Location> moves = new HashMap<>();
+        if (!blocks.isEmpty()) {
+            for (Block block : blocks) {
+                String id = getLoggedStringFromLocation(block.getLocation());
+                if (id != null) {
+                    YamlConfiguration yaml = main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "");
+                    Location loc = block.getLocation();
+                    Location newLoc = block.getRelative(blockFace).getLocation();
+                    String locString = loc.getWorld().getName() + ", " + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ();
+                    String newLocString = newLoc.getWorld().getName() + ", " + newLoc.getBlockX() + ", " + newLoc.getBlockY() + ", " + newLoc.getBlockZ();
 
-        CONSOLE.info(ChatColor.GREEN + "added an item " + i + " " + item.toString());
-        try {
-            yaml.save(file);
-        } catch (IOException e) {
-            e.printStackTrace();
+                    if (pushing && yaml != null) {
+                        if (yaml.getBoolean(id + ".block.options.piston-breakable")) {
+                            destroyCustomBlock(loc, true, null, null);
+                            if (debug >= 3) {
+                                console.info(ChatColor.LIGHT_PURPLE + "Broke the custom block \"" + id + "\" because it was pushed by a piston and \"block.options.piston-breakable\" is true");
+                            }
+                        } else if (!yaml.getBoolean(id + ".block.options.cancel-piston-push")) {
+                            moves.put(loc, newLoc);
+                            if (debug >= 3) {
+                                console.info(ChatColor.LIGHT_PURPLE + "Pushed the custom block \"" + id + "\" from " + locString + " to " + newLocString);
+                            }
+                        } else {
+                            cancelled.add(block);
+                        }
+                    } else if (yaml != null) {
+                        if (!yaml.getBoolean(id + ".block.options.cancel-piston-pull")) {
+                            moves.put(loc, newLoc);
+                            if (debug >= 3) {
+                                console.info(ChatColor.LIGHT_PURPLE + "Pulled the custom block \"" + id + "\" from " + locString + " to " + newLocString);
+                            }
+                        } else {
+                            cancelled.add(block);
+                        }
+                    }
+                }
+            }
+            for (Map.Entry<Location, Location> entry : moves.entrySet()) {
+                moveLoggedBlock(entry.getKey(), entry.getValue());
+            }
         }
-    }*/
+        return cancelled;
+    }
 
-    //when a player places a block, log the location and disguised_block, and set the server block to actual_data if it exists in the definition
+    //when a player places a block, log the location and disguised-block, and set the server block to actual-data if it exists in the definition
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void blockPlace(BlockPlaceEvent event) {
+    public void blockPlaceEvent(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Chunk chunk = block.getChunk();
         World world = block.getWorld();
@@ -450,7 +504,7 @@ public class CustomBlockHandler implements Listener {
                 console.severe(ChatColor.RED + "Could not log the custom block \"" + id + "\" because it does not exist in the file " + sourceFilePath);
                 return;
             }
-            String actual = sourceYaml.getString(id + ".block.actual_block");
+            String actual = sourceYaml.getString(id + ".block.actual-block");
 
             File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunk.getX() + "." + chunk.getZ() + ".yml");
             YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
@@ -465,7 +519,7 @@ public class CustomBlockHandler implements Listener {
                         block.setBlockData(actualData);
                     }
                 } else if (debug >= 3) {
-                    console.warning(ChatColor.YELLOW + "Did not change the server-side block for the custom block \"" + id + "\" at " + locString + " because its source \"actual_block\" is empty");
+                    console.warning(ChatColor.YELLOW + "Did not change the server-side block for the custom block \"" + id + "\" at " + locString + " because its source \"actual-block\" is empty");
                 }
 
                 yaml.set(path, id);
@@ -494,7 +548,7 @@ public class CustomBlockHandler implements Listener {
         String path = idToDefinitionFilePath.get(id);
         if (event.getExpToDrop() != 0 && id != null) {
             YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
-            if (yaml.getBoolean(id + ".block.drops.enabled", true) && yaml.getBoolean(id + ".block.drops.cancel-xp")) {
+            if (yaml != null && yaml.getBoolean(id + ".block.drops.enabled", true) && yaml.getBoolean(id + ".block.drops.cancel-xp")) {
                 event.setExpToDrop(0);
             }
         }
@@ -503,7 +557,7 @@ public class CustomBlockHandler implements Listener {
 
     //custom block dropping logic based on options in a custom block's "block.drops" definition section
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void blockDropItem(BlockDropItemEvent event) {
+    public void blockDropItemEvent(BlockDropItemEvent event) {
         Player player = event.getPlayer();
         Location loc = event.getBlock().getLocation();
         List<Item> originalDrops = event.getItems();
@@ -513,7 +567,7 @@ public class CustomBlockHandler implements Listener {
 
     //handles custom block drops during explosions
     @EventHandler
-    public void entityExplode(EntityExplodeEvent event) {
+    public void entityExplodeEvent(EntityExplodeEvent event) {
         List<Block> blocks = event.blockList();
         double yield = event.getYield();
 
@@ -524,8 +578,8 @@ public class CustomBlockHandler implements Listener {
 
             if (id != null) {
                 blocks.remove(block);
-
-                if (!main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "").getBoolean(id + ".block.options.blast-resistant", false)) {
+                YamlConfiguration yaml = main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "");
+                if (yaml != null && !yaml.getBoolean(id + ".block.options.blast-resistant", false)) {
                     //removing block from explosion and setting to air works, but is there a better way to remove original exploded block drops?
 
                     if (yield > 0) {
@@ -536,15 +590,58 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    /*NOT USED - functionality of un-logging blocks moved to blockDropItem()
-    when a player breaks a block, if the block is logged, un-log the block*/
-    /*@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void blockBreak(BlockBreakEvent event) {
-        console.info(ChatColor.DARK_PURPLE + "bb");
-        if (getLoggedStringFromLocation(event.getBlock().getLocation()) != null) {
-            unlogBlock(event.getBlock().getLocation(), event.getPlayer());
+    // FIXME: 7/31/2021 event.getBlocks() returns an immutable list, so how can the blocks be treated like obsidian and not moved?
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void pistonExtendEvent(BlockPistonExtendEvent event) {
+        List<Block> removed = handleMovedBlocks(event.getBlocks(), event.getDirection(), true);
+        if (!removed.isEmpty()) {
+            event.setCancelled(true);
         }
-    }*/
+
+        for (Block block : event.getBlocks()/*removed*/) {
+            Location loc = block.getRelative(event.getDirection()).getLocation();
+            console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
+            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
+                PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
+                packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK));
+                packet.getBlockPositionModifier().writeSafely(0, new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
+                pm.broadcastServerPacket(packet);
+            }, 3L);
+            /*Material mat = block.getType();
+            BlockData data = block.getBlockData();
+            block.setType(Material.OBSIDIAN);
+            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
+                block.setType(mat);
+                block.setBlockData(data);
+            }, 1L);*/
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void pistonRetractEvent(BlockPistonRetractEvent event) {
+        List<Block> removed = handleMovedBlocks(event.getBlocks(), event.getDirection(), false);
+        if (!removed.isEmpty()) {
+            event.setCancelled(true);
+        }
+
+        for (Block block : event.getBlocks()/*removed*/) {
+            Location loc = block.getRelative(event.getDirection()).getLocation();
+            console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
+            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
+                PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
+                packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK));
+                packet.getBlockPositionModifier().writeSafely(0, new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
+                pm.broadcastServerPacket(packet);
+            }, 3L);
+            /*Material mat = block.getType();
+            BlockData data = block.getBlockData();
+            block.setType(Material.OBSIDIAN);
+            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
+                block.setType(mat);
+                block.setBlockData(data);
+            }, 1L);*/
+        }
+    }
 
     //listens for MAP_CHUNK (ChunkData) packets and calls the block loader for that chunk after a delay specified in the customBlockConfig
     public void chunkLoadListener() {
@@ -561,7 +658,7 @@ public class CustomBlockHandler implements Listener {
 
                         if (chunk.isLoaded()) {
                             Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(main, () -> {
-                                int blocks = loadCustomBlocksFromChunkFile(player, chunk);
+                                int blocks = loadLoggedBlocksInChunk(player, chunk);
 
                                 if (debug >= 1 && blocks != 0) {
                                     console.info(ChatColor.DARK_GREEN + "Loaded " + blocks + " blocks in the chunk at " + chunkX + ", " + chunkZ + " by " + player.getName());
@@ -573,8 +670,8 @@ public class CustomBlockHandler implements Listener {
         );
     }
 
-    //listens for BlockChange packets and (to do) if its position is logged, edits the packet to contain the logged BlockData
     public void blockChangeListener() {
+        //listens for BlockChange packets and (to do) if its position is logged, edits the packet to contain the logged BlockData
         pm.addPacketListener(
                 new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server.BLOCK_CHANGE) {
 
@@ -591,15 +688,20 @@ public class CustomBlockHandler implements Listener {
                         int z = position.getZ();
                         Block block = world.getBlockAt(x, y, z);
 
-                        //player.sendMessage(ChatColor.DARK_PURPLE + "BC:  " + position + "   " + data.getType());
+                        //console.info(ChatColor.GOLD + "BC:  " + position + "   " + wrappedBlockData.getType());
 
                         String locString = world.getName() + ", " + x + ", " + y + ", " + z;
                         String id = getLoggedStringFromLocation(new Location(world, x, y, z));
+                        // FIXME: 8/1/2021 why does the listener not change this block? it sees the block is already logged and edits the packet so why doesn't it show?
+                        /*if (wrappedBlockData.getType() == Material.DIAMOND_BLOCK) {
+                            console.info(ChatColor.GREEN + "DIAMOND  " + block.getType() + "    " + id);
+                        }*/
                         if (id != null) {
                             //commented because this un-logs the block before the event handlers can read it
                             if (/*wrappedBlockData.getType().isEmpty()*/block.getType().isEmpty()) {
                                 unlogBlock(new Location(world, x, y, z), player);
                             } else {
+                                //console.info(ChatColor.DARK_PURPLE + "in disguiser");
                                 BlockData disguisedData = createSyncedBlockData(block.getBlockData().getAsString(), id, true);
 
                                 if (disguisedData == null) {
@@ -607,7 +709,7 @@ public class CustomBlockHandler implements Listener {
                                 }
 
                                 if (disguisedData.getMaterial().equals(Material.AIR) && debug >= 3) {
-                                    console.warning(ChatColor.YELLOW + "Did not edit the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " because its source \"disguised_block\" is empty");
+                                    console.warning(ChatColor.YELLOW + "Did not edit the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
                                 } else {
                                     packet.getBlockData().write(0, WrappedBlockData.createData(disguisedData));
 
@@ -626,17 +728,18 @@ public class CustomBlockHandler implements Listener {
     public void reloadConfigs() {
         main.createConfigs();
         config = main.getConfig();
-        customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom_block.yml"), false, false, debug, "");
+        customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-block.yml"), false, false, debug, "");
 
         File customItemsDir = new File(main.getDataFolder() + File.separator + "CustomItems");
         if (customItemsDir.exists()) {
             if (customItemsDir.list().length == 0) {
                 main.saveResource("CustomItems" + File.separator + "demo.yml", false);
                 if (debug >= 1) {
-                    console.info(ChatColor.DARK_AQUA + "Added the file CustomItems" + File.separator + "demo.yml because the CustomItems folder was empty");
+                    console.info(ChatColor.DARK_AQUA + "Added the file WorldOfZombies\\CustomItems" + File.separator + "demo.yml because the CustomItems folder was empty");
                 }
             }
 
+            idToDefinitionFilePath.clear();
             for (File file : FileUtils.listFiles(customItemsDir, new String[] {"yml"}, true)) {
                 YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
                 yaml.getKeys(false).forEach(key -> {
