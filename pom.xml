@@ -22,6 +22,7 @@
                     <target>8</target>
                 </configuration>
             </plugin>
+            <!--  - Added Maven Shade Plugin to include Apache Commons utility imports directly into the compiled jar
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -41,7 +42,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
         </plugins>
         <resources>
             <resource>

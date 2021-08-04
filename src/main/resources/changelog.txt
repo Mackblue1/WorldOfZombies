@@ -1,16 +1,25 @@
 1.1.3     _/__/21
-    - Added Maven Shade Plugin to include Apache Commons utility imports directly into the compiled jar
-    - Replaced all "_" in block definition tags with "-"
-        - MAKE SURE TO CHANGE TAG NAMES IN YOUR DEFINITIONS OR THE CUSTOM BLOCKS WILL NOT WORK
-        - For example,  "actual_block"  is now  "actual-block"
-    - Renamed  WorldOfZombies\custom_block.yml  to  WorldOfZombies\custom-block.yml  (replaced "_" with "-")
-    - Improved "item" custom block drop tag to include anything in the Material class
-    - Removed the requirement of  "nbt-item"  or  "item"  in an individual drop section
-    - Fixed a bug where custom block IDs wouldn't be properly removed after deleting their definition and reloading the plugin
-    - Fixed a bug where the custom block  "demo-block"  would throw errors because of an incompatible  "sync-state"
-    - Added functionality to calculate which custom blocks will drop items based on the "yield" of explosions
-    - Added functionality to calculate custom block drops for blocks that break because from explosions
-        - Added  "options.blast-resistant"  to not break in explosions
+    New Features:
+        - More details for all new custom block features can be found in the file  WorldOfZombies\CustomItems\demo.yml
+        - Improved "item" custom block drop tag to include anything in the Material class
+        - Added functionality to calculate which custom blocks will drop items based on the "yield" of explosions
+        - Added functionality to calculate custom block drops for blocks that break because from explosions
+            - Added  "options.blast-resistant"  to not break in explosions
+        - Added piston event functionality (push and pull)
+            - Added  "options.cancel-piston-push"  ,  "options.cancel-piston-pull"  , and  "options.piston-breakable"
+
+    Changes:
+        - Replaced all "_" in block definition tags with "-"
+            - MAKE SURE TO CHANGE TAG NAMES IN YOUR DEFINITIONS OR ELSE CUSTOM BLOCKS WILL NOT WORK
+            - For example,  "actual_block"  is now  "actual-block"
+        - Renamed the file  WorldOfZombies\custom_block.yml  to  WorldOfZombies\custom-block.yml  (replaced "_" with "-")
+        - Removed the requirement of  "nbt-item"  or  "item"  in an individual drop section
+
+    Bux Fixes:
+        - Fixed a bug where custom block IDs wouldn't be properly removed after deleting their definition and reloading the plugin
+        - Fixed a bug where the custom block  "demo-block"  would throw errors because of an incompatible  "sync-state"
+        - Small bugfixes and improvements
+        - Known bug: sometimes custom blocks with active  "sync-states"  will cause an error about  "sync_states"  and  "disguised-data"  when being pulled by a piston with a slime block, even though the block appears to be disguised correctly
 
 
 1.1.2     7/26/21

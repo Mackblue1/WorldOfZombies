@@ -4,8 +4,6 @@ import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.wrappers.BlockPosition;
-import com.comphenix.protocol.wrappers.ChunkCoordIntPair;
-import com.comphenix.protocol.wrappers.MultiBlockChangeInfo;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import de.tr7zw.nbtapi.NBTContainer;
 import de.tr7zw.nbtapi.NBTItem;
@@ -71,7 +69,10 @@ public class CustomBlockHandler implements Listener {
         String chunkString = world.getName() + ", " + chunkX + ", " + chunkZ;
 
         File chunkFolder = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName());
-        if (main.loadYamlFromFile(chunkFolder, false, true, debug, ChatColor.BLUE + "No custom blocks were loaded because the database folder for this world does not exist") == null) {
+        if (!chunkFolder.exists()) {
+            if (debug >= 4) {
+                console.info(ChatColor.BLUE + "No custom blocks were loaded because the database folder for the world \"" + world.getName() + "\" does not exist");
+            }
             return 0;
         }
 
@@ -243,6 +244,32 @@ public class CustomBlockHandler implements Listener {
         return null;
     }
 
+    //gets the BlockData logged in "disguised-data" for a location
+    public BlockData getDisguisedBlockDataFromLocation(Location loc, String id) {
+        World world = loc.getWorld();
+        int x = loc.getBlockX();
+        int y = loc.getBlockY();
+        int z = loc.getBlockZ();
+        Block block = world.getBlockAt(loc);
+
+        if (block.getType().isEmpty()) {
+            unlogBlock(new Location(world, x, y, z), null);
+        } else {
+            BlockData data = createSyncedBlockData(block.getBlockData().getAsString(), id, true);
+
+            if (data == null) {
+                return null;
+            }
+
+            if (data.getMaterial().equals(Material.AIR) && debug >= 3) {
+                return Bukkit.createBlockData(Material.AIR);
+            } else {
+                return data;
+            }
+        }
+        return null;
+    }
+
     //if a location is logged in a file, it will be removed from the file
     public void unlogBlock(Location loc, Player player) {
         File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + loc.getWorld().getName(), "chunk." + loc.getChunk().getX() + "." + loc.getChunk().getZ() + ".yml");
@@ -308,7 +335,7 @@ public class CustomBlockHandler implements Listener {
                                     for (String condition : dropSection.getStringList("conditions")) {
                                         Enchantment enchantment = Enchantment.getByKey(NamespacedKey.minecraft(condition));
                                         if (enchantment == null) {
-                                            console.severe(ChatColor.RED + "The enchantment \"" + enchantment.getKey() + "\" is not a valid enchantment");
+                                            console.severe(ChatColor.RED + "The enchantment \"" + condition + "\" is not a valid enchantment");
                                             continue drop;
                                         } else if (!player.getInventory().getItemInMainHand().containsEnchantment(Enchantment.getByKey(NamespacedKey.minecraft(condition)))) {
                                             continue drop;
@@ -425,10 +452,9 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    // FIXME: 7/31/2021 how to send BC packet? send new BC in moveLoggedBlock() to trigger BC listener and modify to logged info?
     //handles custom blocks that are being pushed/pulled by a piston
-    public List<Block> handleMovedBlocks(List<Block> blocks, BlockFace blockFace, boolean pushing) {
-        List<Block> cancelled = new ArrayList<>();
+    public /*List<Block>*/boolean handleMovedBlocks(List<Block> blocks, BlockFace blockFace, boolean pushing) {
+        //List<Block> cancelled = new ArrayList<>();
         Map<Location, Location> moves = new HashMap<>();
         if (!blocks.isEmpty()) {
             for (Block block : blocks) {
@@ -452,7 +478,8 @@ public class CustomBlockHandler implements Listener {
                                 console.info(ChatColor.LIGHT_PURPLE + "Pushed the custom block \"" + id + "\" from " + locString + " to " + newLocString);
                             }
                         } else {
-                            cancelled.add(block);
+                            //cancelled.add(block);
+                            return true;
                         }
                     } else if (yaml != null) {
                         if (!yaml.getBoolean(id + ".block.options.cancel-piston-pull")) {
@@ -461,7 +488,8 @@ public class CustomBlockHandler implements Listener {
                                 console.info(ChatColor.LIGHT_PURPLE + "Pulled the custom block \"" + id + "\" from " + locString + " to " + newLocString);
                             }
                         } else {
-                            cancelled.add(block);
+                            //cancelled.add(block);
+                            return true;
                         }
                     }
                 }
@@ -470,7 +498,8 @@ public class CustomBlockHandler implements Listener {
                 moveLoggedBlock(entry.getKey(), entry.getValue());
             }
         }
-        return cancelled;
+        //return cancelled;
+        return false;
     }
 
     //when a player places a block, log the location and disguised-block, and set the server block to actual-data if it exists in the definition
@@ -592,56 +621,21 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    // FIXME: 7/31/2021 event.getBlocks() returns an immutable list, so how can the blocks be treated like obsidian and not moved?
+    //note: event.getBlocks() returns an immutable list, so how can the blocks be treated like obsidian and not moved?
+    //calls handleMovedBlocks() to do most of the work, and cancels the event if one or more blocks has the config option "cancel-piston
     @EventHandler(priority = EventPriority.HIGHEST)
     public void pistonExtendEvent(BlockPistonExtendEvent event) {
-        List<Block> removed = handleMovedBlocks(event.getBlocks(), event.getDirection(), true);
-        if (!removed.isEmpty()) {
+        if (handleMovedBlocks(event.getBlocks(), event.getDirection(), true)) {
             event.setCancelled(true);
         }
 
-        for (Block block : event.getBlocks()/*removed*/) {
-            Location loc = block.getRelative(event.getDirection()).getLocation();
-            //console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
-            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
-                PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
-                packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK));
-                packet.getBlockPositionModifier().writeSafely(0, new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
-                pm.broadcastServerPacket(packet);
-            }, 3L);
-            /*Material mat = block.getType();
-            BlockData data = block.getBlockData();
-            block.setType(Material.OBSIDIAN);
-            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
-                block.setType(mat);
-                block.setBlockData(data);
-            }, 1L);*/
-        }
     }
 
+    //calls handleMovedBlocks() to check if the event should be cancelled, and cancels if it should
     @EventHandler(priority = EventPriority.HIGHEST)
     public void pistonRetractEvent(BlockPistonRetractEvent event) {
-        List<Block> removed = handleMovedBlocks(event.getBlocks(), event.getDirection(), false);
-        if (!removed.isEmpty()) {
+        if (handleMovedBlocks(event.getBlocks(), event.getDirection(), false)) {
             event.setCancelled(true);
-        }
-
-        for (Block block : event.getBlocks()/*removed*/) {
-            Location loc = block.getRelative(event.getDirection()).getLocation();
-            //console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
-            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
-                PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
-                packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK));
-                packet.getBlockPositionModifier().writeSafely(0, new BlockPosition(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()));
-                pm.broadcastServerPacket(packet);
-            }, 3L);
-            /*Material mat = block.getType();
-            BlockData data = block.getBlockData();
-            block.setType(Material.OBSIDIAN);
-            Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
-                block.setType(mat);
-                block.setBlockData(data);
-            }, 1L);*/
         }
     }
 
@@ -689,29 +683,16 @@ public class CustomBlockHandler implements Listener {
                         int x = position.getX();
                         int y = position.getY();
                         int z = position.getZ();
-                        Block block = world.getBlockAt(x, y, z);
+                        Location loc = new Location(world, x, y, z);
+                        String locString = world.getName() + ", " + x + ", " + y + ", " + z;
 
                         //console.info(ChatColor.GOLD + "BC:  " + position + "   " + wrappedBlockData.getType());
 
-                        String locString = world.getName() + ", " + x + ", " + y + ", " + z;
-                        String id = getLoggedStringFromLocation(new Location(world, x, y, z));
-                        // FIXME: 8/1/2021 why does the listener not change this block? it sees the block is already logged and edits the packet so why doesn't it show?
-                        /*if (wrappedBlockData.getType() == Material.DIAMOND_BLOCK) {
-                            console.info(ChatColor.GREEN + "DIAMOND  " + block.getType() + "    " + id);
-                        }*/
+                        String id = getLoggedStringFromLocation(loc);
                         if (id != null) {
-                            //commented because this un-logs the block before the event handlers can read it
-                            if (/*wrappedBlockData.getType().isEmpty()*/block.getType().isEmpty()) {
-                                unlogBlock(new Location(world, x, y, z), player);
-                            } else {
-                                //console.info(ChatColor.DARK_PURPLE + "in disguiser");
-                                BlockData disguisedData = createSyncedBlockData(block.getBlockData().getAsString(), id, true);
-
-                                if (disguisedData == null) {
-                                    return;
-                                }
-
-                                if (disguisedData.getMaterial().equals(Material.AIR) && debug >= 3) {
+                            BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
+                            if (disguisedData != null) {
+                                if (disguisedData.getMaterial() == Material.AIR && debug >= 3) {
                                     console.warning(ChatColor.YELLOW + "Did not edit the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
                                 } else {
                                     packet.getBlockData().write(0, WrappedBlockData.createData(disguisedData));
@@ -735,22 +716,44 @@ public class CustomBlockHandler implements Listener {
                     @Override
                     public void onPacketSending(PacketEvent event) {
                         Player player = event.getPlayer();
+                        World world = player.getWorld();
                         PacketContainer packet = event.getPacket();
-                        WrappedBlockData[] dataArr = packet.getBlockDataArrays().read(0);
                         short[] shortsArr = packet.getShortArrays().read(0);
+                        WrappedBlockData[] blockDataArr = packet.getBlockDataArrays().read(0);
                         BlockPosition subChunkPos = packet.getSectionPositions().read(0);
-                        short location = shortsArr[0];
-                        int localX = location >> 8 & 15;
-                        int localY = location & 15;
-                        int localZ = location >> 4 & 15;
-                        int absoluteX = (subChunkPos.getX() << 4) + localX;
-                        int absoluteY = (subChunkPos.getY() << 4) + localY;
-                        int absoluteZ = (subChunkPos.getZ() << 4) + localZ;
+                        int offsetX = (subChunkPos.getX() << 4);
+                        int offsetY = (subChunkPos.getY() << 4);
+                        int offsetZ = (subChunkPos.getZ() << 4);
 
-                        player.sendMessage(ChatColor.BLUE + "blocks len: " + dataArr.length);
-                        player.sendMessage(ChatColor.BLUE + "chunk pos: " + subChunkPos);
-                        player.sendMessage(ChatColor.RED + "local pos (" + dataArr[0].getType() + "): " + localZ + ", " + localY + ", " + localZ);
-                        player.sendMessage(ChatColor.DARK_PURPLE + "absoulte pos: " + absoluteX + ", " + absoluteY + ", " + absoluteZ);
+                        for (int i = 0; i < shortsArr.length; i++) {
+                            short location = shortsArr[i];
+                            int absoluteX = offsetX + (location >> 8 & 0xF);
+                            int absoluteY = offsetY + (location & 0xF);
+                            int absoluteZ = offsetZ + (location >> 4 & 0xF);
+                            Location loc = new Location(world, absoluteX, absoluteY, absoluteZ);
+                            String locString = world.getName() + ", " + absoluteX + ", " + absoluteY + ", " + absoluteZ;
+
+                            String id = getLoggedStringFromLocation(loc);
+                            if (id != null) {
+                                BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
+                                if (disguisedData != null) {
+                                    if (disguisedData.getMaterial() == Material.AIR && debug >= 3) {
+                                        console.warning(ChatColor.YELLOW + "Did not edit the BlockData for the custom block \"" + id + "\" at " + locString + " in a MultiBlockChange packet because its source \"disguised-block\" is empty");
+                                    } else {
+                                        blockDataArr[i] = WrappedBlockData.createData(disguisedData);
+
+                                        if (debug >= 4) {
+                                            console.info(ChatColor.AQUA + "Edited the BlockData for the custom block \"" + id + "\" at " + locString + " in a MultiBlockChange packet by " + player.getName());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        packet.getBlockDataArrays().writeSafely(0, blockDataArr);
+                        if (debug >= 1 && shortsArr.length != 0) {
+                            console.info(ChatColor.DARK_GREEN + "Loaded " + shortsArr.length + " blocks in the chunk at " + subChunkPos.getX() + ", " + subChunkPos.getZ() + " by " + player.getName());
+                        }
                     }
                 }
         );
