@@ -4,6 +4,8 @@ import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.wrappers.BlockPosition;
+import com.comphenix.protocol.wrappers.ChunkCoordIntPair;
+import com.comphenix.protocol.wrappers.MultiBlockChangeInfo;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import de.tr7zw.nbtapi.NBTContainer;
 import de.tr7zw.nbtapi.NBTItem;
@@ -25,7 +27,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.ItemStack;
-
 
 import java.io.File;
 import java.io.IOException;
@@ -57,6 +58,7 @@ public class CustomBlockHandler implements Listener {
         reloadConfigs();
         chunkLoadListener();
         blockChangeListener();
+        multiBlockChangeListener();
         MultiBlockChangeWrap.init(this.pm, console, debug);
     }
 
@@ -600,7 +602,7 @@ public class CustomBlockHandler implements Listener {
 
         for (Block block : event.getBlocks()/*removed*/) {
             Location loc = block.getRelative(event.getDirection()).getLocation();
-            console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
+            //console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
             Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
                 PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
                 packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK));
@@ -626,7 +628,7 @@ public class CustomBlockHandler implements Listener {
 
         for (Block block : event.getBlocks()/*removed*/) {
             Location loc = block.getRelative(event.getDirection()).getLocation();
-            console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
+            //console.info(ChatColor.DARK_PURPLE + "loc: " + loc);
             Bukkit.getScheduler().scheduleSyncDelayedTask(main, () -> {
                 PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
                 packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK));
@@ -652,8 +654,8 @@ public class CustomBlockHandler implements Listener {
                     public void onPacketSending(PacketEvent event) {
 
                         Player player = event.getPlayer();
-                        int chunkX = event.getPacket().getIntegers().readSafely(0);
-                        int chunkZ = event.getPacket().getIntegers().readSafely(1);
+                        int chunkX = event.getPacket().getIntegers().read(0);
+                        int chunkZ = event.getPacket().getIntegers().read(1);
                         Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
 
                         if (chunk.isLoaded()) {
@@ -670,8 +672,9 @@ public class CustomBlockHandler implements Listener {
         );
     }
 
+
+    //listens for BlockChange packets and if its position is logged, edits the packet to contain the logged disguised BlockData
     public void blockChangeListener() {
-        //listens for BlockChange packets and (to do) if its position is logged, edits the packet to contain the logged BlockData
         pm.addPacketListener(
                 new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server.BLOCK_CHANGE) {
 
@@ -679,8 +682,8 @@ public class CustomBlockHandler implements Listener {
                     public void onPacketSending(PacketEvent event) {
                         Player player = event.getPlayer();
                         PacketContainer packet = event.getPacket();
-                        WrappedBlockData wrappedBlockData = packet.getBlockData().readSafely(0);
-                        BlockPosition position = packet.getBlockPositionModifier().readSafely(0);
+                        WrappedBlockData wrappedBlockData = packet.getBlockData().read(0);
+                        BlockPosition position = packet.getBlockPositionModifier().read(0);
 
                         World world = player.getWorld();
                         int x = position.getX();
@@ -719,6 +722,35 @@ public class CustomBlockHandler implements Listener {
                                 }
                             }
                         }
+                    }
+                }
+        );
+    }
+
+    //listens for MultiBlockChange packets edits the packet to contain the logged disguised BlockData for any included logged blocks
+    public void multiBlockChangeListener() {
+        pm.addPacketListener(
+                new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
+
+                    @Override
+                    public void onPacketSending(PacketEvent event) {
+                        Player player = event.getPlayer();
+                        PacketContainer packet = event.getPacket();
+                        WrappedBlockData[] dataArr = packet.getBlockDataArrays().read(0);
+                        short[] shortsArr = packet.getShortArrays().read(0);
+                        BlockPosition subChunkPos = packet.getSectionPositions().read(0);
+                        short location = shortsArr[0];
+                        int localX = location >> 8 & 15;
+                        int localY = location & 15;
+                        int localZ = location >> 4 & 15;
+                        int absoluteX = (subChunkPos.getX() << 4) + localX;
+                        int absoluteY = (subChunkPos.getY() << 4) + localY;
+                        int absoluteZ = (subChunkPos.getZ() << 4) + localZ;
+
+                        player.sendMessage(ChatColor.BLUE + "blocks len: " + dataArr.length);
+                        player.sendMessage(ChatColor.BLUE + "chunk pos: " + subChunkPos);
+                        player.sendMessage(ChatColor.RED + "local pos (" + dataArr[0].getType() + "): " + localZ + ", " + localY + ", " + localZ);
+                        player.sendMessage(ChatColor.DARK_PURPLE + "absoulte pos: " + absoluteX + ", " + absoluteY + ", " + absoluteZ);
                     }
                 }
         );
@@ -1057,9 +1089,9 @@ public class CustomBlockHandler implements Listener {
                 public void onPacketSending(PacketEvent event) {
 
                     Player player = event.getPlayer();
-                    Entity entity = Bukkit.getEntity(event.getPacket().getUUIDs().readSafely(0));
+                    Entity entity = Bukkit.getEntity(event.getPacket().getUUIDs().read(0));
 
-                    if (event.getPacket().getIntegers().readSafely(1) == 1 && entity.getScoreboardTags().contains("woz.custom_block")) {
+                    if (event.getPacket().getIntegers().read(1) == 1 && entity.getScoreboardTags().contains("woz.custom_block")) {
                         event.setCancelled(true);
                         int x = (entity.getChunk().getX() - player.getChunk().getX()) + 4;
                         int z = (entity.getChunk().getZ() - player.getChunk().getZ()) + 4;

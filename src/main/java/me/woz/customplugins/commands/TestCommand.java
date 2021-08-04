@@ -46,7 +46,9 @@ public class TestCommand implements CommandExecutor {
             Block target = player.getTargetBlock(10);
             //BlockData data = target.getBlockData();
 
-            customBlockHandler.moveLoggedBlock(target.getLocation(), target.getLocation().add(0, 1, 0));
+            player.sendMessage(ChatColor.GREEN + "chunk: " + chunk.getX() + ", " + chunk.getZ() + "   local target: " + (target.getX() & 0xF) + ", " + (target.getY() & 0xF) + ", " + (target.getZ() & 0xF));
+
+            //customBlockHandler.moveLoggedBlock(target.getLocation(), target.getLocation().add(0, 1, 0));
 
             //player.sendMessage(ChatColor.GREEN + "" + target.getDrops(player.getInventory().getItemInMainHand(), player));
 

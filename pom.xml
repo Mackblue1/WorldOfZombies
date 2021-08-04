@@ -9,7 +9,7 @@
 
     <groupId>me.woz.customplugins</groupId>
     <artifactId>WorldOfZombies</artifactId>
-    <version>1.1.2</version> <!-- LATEST ADDITION: custom block drops -->
+    <version>1.1.3</version> <!-- LATEST ADDITION: piston event handling, MBC packet listener -->
 
     <build>
         <plugins>
@@ -21,6 +21,26 @@
                     <source>8</source>
                     <target>8</target>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.4</version>
+                        <configuration>
+                            <artifactSet>
+                                <includes>
+                                    <include>org.apache.commons:commons-lang3</include>
+                                </includes>
+                            </artifactSet>
+                        </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
         <resources>

@@ -1,4 +1,5 @@
 1.1.3     _/__/21
+    - Added Maven Shade Plugin to include Apache Commons utility imports directly into the compiled jar
     - Replaced all "_" in block definition tags with "-"
         - MAKE SURE TO CHANGE TAG NAMES IN YOUR DEFINITIONS OR THE CUSTOM BLOCKS WILL NOT WORK
         - For example,  "actual_block"  is now  "actual-block"
