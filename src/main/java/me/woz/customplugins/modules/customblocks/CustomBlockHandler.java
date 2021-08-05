@@ -5,6 +5,7 @@ import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
+import de.tr7zw.nbtapi.NBTCompound;
 import de.tr7zw.nbtapi.NBTContainer;
 import de.tr7zw.nbtapi.NBTItem;
 import me.woz.customplugins.WorldOfZombies;
@@ -44,6 +45,7 @@ public class CustomBlockHandler implements Listener {
 
     //private Map<Player, MultiBlockChangeWrap[][][]> subChunkList = new HashMap<>();
     private final Map<String, String> idToDefinitionFilePath;
+    private final Map<String, YamlConfiguration> idToDefinitionFile;
 
     //constructor to initialize fields and load custom block config file
     public CustomBlockHandler(WorldOfZombies main, ProtocolManager pm) {
@@ -52,6 +54,7 @@ public class CustomBlockHandler implements Listener {
         this.pm = pm;
 
         idToDefinitionFilePath = new HashMap<>();
+        idToDefinitionFile = new HashMap<>();
 
         reloadConfigs();
         chunkLoadListener();
@@ -110,16 +113,28 @@ public class CustomBlockHandler implements Listener {
                         }
 
                         Location loc = new Location(Bukkit.getWorld(file.getParentFile().getName()), Double.parseDouble(locParts[0]), Double.parseDouble(locParts[1]), Double.parseDouble(locParts[2]));
+                        Block block = world.getBlockAt(loc);
                         String locString = locParts[0] + ", " + locParts[1] + ", " + locParts[2];
                         String id = logYaml.getString(sectionString + "." + key);
+
+                        BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false);
+                        if (!block.getBlockData().matches(actualData)) {
+                            if (debug >= 3) {
+                                console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because the BlockData of that block does not match the source \"actual-block\"");
+                            }
+                            continue;
+                        }
+
                         BlockData disguisedData = createSyncedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, true);
 
                         if (disguisedData == null) {
                             continue;
                         }
 
-                        if (disguisedData.getMaterial().equals(Material.AIR) && debug >= 3) {
-                            console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
+                        if (disguisedData.getMaterial().equals(Material.AIR)) {
+                                if (debug >= 3) {
+                                    console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
+                                }
                         } else {
                             packet.addBlock(loc, disguisedData);
                             blockCount++;
@@ -162,7 +177,7 @@ public class CustomBlockHandler implements Listener {
     //merges disguised-block or actual-block BlockData for a custom block with the sync states in originalBlockDataString
     //null return value indicates an error, and a BlockData with a Material of AIR indicates that the source disguised-block or actual-block does not exist
     public BlockData createSyncedBlockData(String originalBlockDataString, String id, boolean disguise) {
-        YamlConfiguration sourceYaml = main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "");
+        YamlConfiguration sourceYaml = idToDefinitionFile.get(id);
         if (sourceYaml == null) {
             console.severe(ChatColor.RED + "The custom block \"" + id + "\" could not be loaded because its source file does not exist");
             return null;
@@ -261,7 +276,7 @@ public class CustomBlockHandler implements Listener {
                 return null;
             }
 
-            if (data.getMaterial().equals(Material.AIR) && debug >= 3) {
+            if (data.getMaterial().equals(Material.AIR)) {
                 return Bukkit.createBlockData(Material.AIR);
             } else {
                 return data;
@@ -311,7 +326,7 @@ public class CustomBlockHandler implements Listener {
     public void spawnCustomBlockDrops(String id, Location loc, List<Item> originalDrops, Player player) {
         List<ItemStack> newDrops = new ArrayList<>();
         String path = idToDefinitionFilePath.get(id);
-        YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
+        YamlConfiguration yaml = idToDefinitionFile.get(id);
         if (yaml == null) {
             console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because the source file " + path + " does not exist");
             return;
@@ -460,7 +475,7 @@ public class CustomBlockHandler implements Listener {
             for (Block block : blocks) {
                 String id = getLoggedStringFromLocation(block.getLocation());
                 if (id != null) {
-                    YamlConfiguration yaml = main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "");
+                    YamlConfiguration yaml = idToDefinitionFile.get(id);
                     Location loc = block.getLocation();
                     Location newLoc = block.getRelative(blockFace).getLocation();
                     String locString = loc.getWorld().getName() + ", " + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ();
@@ -510,8 +525,9 @@ public class CustomBlockHandler implements Listener {
         World world = block.getWorld();
 
         ItemStack item = event.getItemInHand();
-        NBTItem nbtItem = new NBTItem(item);
-        String id = nbtItem.getString("CustomBlock");
+
+        NBTCompound wozItemComp = new NBTItem(item).getOrCreateCompound("WoZItem");
+        String id = wozItemComp.getString("CustomItem");
         String sourceFilePath = idToDefinitionFilePath.get(id);
 
         int x = block.getX();
@@ -523,9 +539,9 @@ public class CustomBlockHandler implements Listener {
 
         //event.getPlayer().sendMessage(ChatColor.GREEN + "BPE:  " + block.getLocation() + "   " + block.getBlockData().getAsString());
 
-        if (nbtItem.getBoolean("IsCustomBlock") && sourceFilePath != null) {
+        if (wozItemComp.getBoolean("IsCustomItem") && sourceFilePath != null) {
 
-            YamlConfiguration sourceYaml = main.loadYamlFromFile(new File(sourceFilePath), false, false, debug, "");
+            YamlConfiguration sourceYaml = idToDefinitionFile.get(id);
             if (sourceYaml == null) {
                 console.severe(ChatColor.RED + "An error occurred while trying to load the source file for the custom block \"" + id + "\"");
                 return;
@@ -567,8 +583,8 @@ public class CustomBlockHandler implements Listener {
             } catch (IOException e) {
                 console.severe(ChatColor.RED + "Could not save the file for the chunk at " + chunkString);
             }
-        } else if (nbtItem.getBoolean("IsCustomBlock") && sourceFilePath == null && debug >= 3) {
-            console.warning(ChatColor.YELLOW + event.getPlayer().getName() + " placed " + block.getBlockData().getAsString() + " at " + locString + " which contains the tags \"IsCustomBlock:" + nbtItem.getBoolean("IsCustomBlock") + "\" and \"CustomBlock:" + id + "\", but \"" + id + "\" is not a valid custom block");
+        } else if (wozItemComp.getBoolean("IsCustomItem") && sourceFilePath == null && debug >= 3) {
+            console.warning(ChatColor.YELLOW + event.getPlayer().getName() + " placed " + block.getBlockData().getAsString() + " at " + locString + " which contains the tags \"IsCustomBlock:" + wozItemComp.getBoolean("IsCustomItem") + "\" and \"CustomBlock:" + id + "\", but \"" + id + "\" is not a valid custom block");
         }
     }
 
@@ -576,9 +592,8 @@ public class CustomBlockHandler implements Listener {
     @EventHandler
     public void blockDropXpEvent(BlockExpEvent event) {
         String id = getLoggedStringFromLocation(event.getBlock().getLocation());
-        String path = idToDefinitionFilePath.get(id);
         if (event.getExpToDrop() != 0 && id != null) {
-            YamlConfiguration yaml = main.loadYamlFromFile(new File(path), false, false, debug, "");
+            YamlConfiguration yaml = idToDefinitionFile.get(id);
             if (yaml != null && yaml.getBoolean(id + ".block.drops.enabled", true) && yaml.getBoolean(id + ".block.drops.cancel-xp")) {
                 event.setExpToDrop(0);
             }
@@ -609,7 +624,7 @@ public class CustomBlockHandler implements Listener {
 
             if (id != null) {
                 blocks.remove(block);
-                YamlConfiguration yaml = main.loadYamlFromFile(new File(idToDefinitionFilePath.get(id)), false, false, debug, "");
+                YamlConfiguration yaml = idToDefinitionFile.get(id);
                 if (yaml != null && !yaml.getBoolean(id + ".block.options.blast-resistant", false)) {
                     //removing block from explosion and setting to air works, but is there a better way to remove original exploded block drops?
 
@@ -684,23 +699,31 @@ public class CustomBlockHandler implements Listener {
                         int y = position.getY();
                         int z = position.getZ();
                         Location loc = new Location(world, x, y, z);
+                        Block block = world.getBlockAt(loc);
                         String locString = world.getName() + ", " + x + ", " + y + ", " + z;
 
                         //console.info(ChatColor.GOLD + "BC:  " + position + "   " + wrappedBlockData.getType());
 
                         String id = getLoggedStringFromLocation(loc);
                         if (id != null) {
-                            BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
-                            if (disguisedData != null) {
-                                if (disguisedData.getMaterial() == Material.AIR && debug >= 3) {
-                                    console.warning(ChatColor.YELLOW + "Did not edit the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
-                                } else {
-                                    packet.getBlockData().write(0, WrappedBlockData.createData(disguisedData));
+                            BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false);
+                            if (block.getBlockData().matches(actualData)) {
+                                BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
+                                if (disguisedData != null) {
+                                    if (disguisedData.getMaterial() == Material.AIR) {
+                                        if (debug >= 3){
+                                            console.warning(ChatColor.YELLOW + "Did not edit the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
+                                        }
+                                    } else {
+                                        packet.getBlockData().write(0, WrappedBlockData.createData(disguisedData));
 
-                                    if (debug >= 4) {
-                                        console.info(ChatColor.AQUA + "Edited the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " by " + player.getName());
+                                        if (debug >= 4) {
+                                            console.info(ChatColor.AQUA + "Edited the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " by " + player.getName());
+                                        }
                                     }
                                 }
+                            } else if (debug >= 3) {
+                                console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because the BlockData of that block does not match the source \"actual-block\"");
                             }
                         }
                     }
@@ -731,21 +754,29 @@ public class CustomBlockHandler implements Listener {
                             int absoluteY = offsetY + (location & 0xF);
                             int absoluteZ = offsetZ + (location >> 4 & 0xF);
                             Location loc = new Location(world, absoluteX, absoluteY, absoluteZ);
+                            Block block = world.getBlockAt(loc);
                             String locString = world.getName() + ", " + absoluteX + ", " + absoluteY + ", " + absoluteZ;
 
                             String id = getLoggedStringFromLocation(loc);
                             if (id != null) {
-                                BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
-                                if (disguisedData != null) {
-                                    if (disguisedData.getMaterial() == Material.AIR && debug >= 3) {
-                                        console.warning(ChatColor.YELLOW + "Did not edit the BlockData for the custom block \"" + id + "\" at " + locString + " in a MultiBlockChange packet because its source \"disguised-block\" is empty");
-                                    } else {
-                                        blockDataArr[i] = WrappedBlockData.createData(disguisedData);
+                                BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false);
+                                if (block.getBlockData().matches(actualData)) {
+                                    BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
+                                    if (disguisedData != null) {
+                                        if (disguisedData.getMaterial() == Material.AIR) {
+                                            if (debug >= 3) {
+                                                console.warning(ChatColor.YELLOW + "Did not edit the BlockData for the custom block \"" + id + "\" at " + locString + " in a MultiBlockChange packet because its source \"disguised-block\" is empty");
+                                            }
+                                        } else {
+                                            blockDataArr[i] = WrappedBlockData.createData(disguisedData);
 
-                                        if (debug >= 4) {
-                                            console.info(ChatColor.AQUA + "Edited the BlockData for the custom block \"" + id + "\" at " + locString + " in a MultiBlockChange packet by " + player.getName());
+                                            if (debug >= 4) {
+                                                console.info(ChatColor.AQUA + "Edited the BlockData for the custom block \"" + id + "\" at " + locString + " in a MultiBlockChange packet by " + player.getName());
+                                            }
                                         }
                                     }
+                                } else if (debug >= 3) {
+                                    console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because the BlockData of that block does not match the source \"actual-block\"");
                                 }
                             }
                         }
@@ -775,11 +806,16 @@ public class CustomBlockHandler implements Listener {
             }
 
             idToDefinitionFilePath.clear();
+            idToDefinitionFile.clear();
             for (File file : FileUtils.listFiles(customItemsDir, new String[] {"yml"}, true)) {
                 YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
                 yaml.getKeys(false).forEach(key -> {
                     if (yaml.isConfigurationSection(key)) {
+                        if (idToDefinitionFilePath.containsKey(key)) {
+                            console.severe(ChatColor.RED + "A duplicate definition for the custom block \"" + key + "\" was detected in the files " + idToDefinitionFilePath.get(key) + " and " + file.getPath());
+                        }
                         idToDefinitionFilePath.put(key, file.getPath());
+                        idToDefinitionFile.put(key, yaml);
                     }
                 });
             }
@@ -790,6 +826,14 @@ public class CustomBlockHandler implements Listener {
 
         debug = customBlockConfig.getInt("Global.debug");
         MultiBlockChangeWrap.setDebug(debug);
+    }
+
+    public Map<String, String> getIdToDefinitionFilePath() {
+        return idToDefinitionFilePath;
+    }
+
+    public Map<String, YamlConfiguration> getIdToDefinitionFile() {
+        return idToDefinitionFile;
     }
 
     //uses the coords of a new and old chunk (usually from a movement event) to determine the direction a player moved between chunks

@@ -1,5 +1,9 @@
 1.1.3     _/__/21
     New Features:
+        - Added a MultiBlockChange packet listener with same functionality as existing BlockChange packet listener
+        - Added an error message when a duplicate custom block ID definition is detected
+        - Custom block definition yaml files are now ONLY loaded on startup and  /woz reload  to increase performance
+        - Added a check in BlockChange and MultiBlockChange packets so that blocks will only be disguised if they match the  "actual-data"  in the block's definition
         - More details for all new custom block features can be found in the file  WorldOfZombies\CustomItems\demo.yml
         - Improved "item" custom block drop tag to include anything in the Material class
         - Added functionality to calculate which custom blocks will drop items based on the "yield" of explosions
@@ -14,6 +18,10 @@
             - For example,  "actual_block"  is now  "actual-block"
         - Renamed the file  WorldOfZombies\custom_block.yml  to  WorldOfZombies\custom-block.yml  (replaced "_" with "-")
         - Removed the requirement of  "nbt-item"  or  "item"  in an individual drop section
+        - NBT tags for custom items are now inside the section WoZItem
+            - MAKE SURE TO CHANGE THE NBT FORMAT IN ALL CUSTOM ITEMS OR ELSE CUSTOM BLOCKS WILL NOT WORK
+            - Also renamed the tags from  "IsCustomBlock"  and  "CustomBlock"  to  "IsCustomItem"  and  "CustomItem"
+            - New NBT format is:  "WoZItem: { IsCustomBlock:[boolean], CustomItem: [item id] }"
 
     Bux Fixes:
         - Fixed a bug where custom block IDs wouldn't be properly removed after deleting their definition and reloading the plugin
