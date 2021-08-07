@@ -32,6 +32,7 @@ permissions:
       worldofzombies.command.info: true
       worldofzombies.command.database: true
       worldofzombies.command.get: true
+      worldofzombies.command.item: true
   worldofzombies.command.reload:
     description: Allows a player to reload this plugin's config files
   worldofzombies.command.info:
@@ -40,3 +41,5 @@ permissions:
     description: Allows a player to delete or clone worlds' custom block databases
   worldofzombies.command.get:
     description: Allows a player to get the item from a custom block's definition
+  worldofzombies.command.item:
+    description: Allows a player to get the NBT API string for the held item

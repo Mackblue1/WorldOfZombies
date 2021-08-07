@@ -4,6 +4,10 @@
             - The new permission  "worldofzombies.command.get"  has been added for this command
             - This command includes dynamic tab completion based on the active custom blocks from the most recent plugin reload
             - If the item doesn't have the required custom block NBT tags, they will be added to the item automatically
+        - Added the command  "/woz item nbt (-yaml)"  which sends the player the NBT API string for the item in their main hand
+            - The new permission  "worldofzombies.command.item"  has been added for this command
+            - The optional flag  "-yaml"  will format the string to start and end with a single quote and escapes the internal single quotes
+                - This flag is intended to be used so the returned string can be pasted directly into a yaml file
         - Added a MultiBlockChange packet listener with same functionality as existing BlockChange packet listener
         - Added an error message when a duplicate custom block ID definition is detected
         - Custom block definition yaml files are now ONLY loaded on startup and  /woz reload  to increase performance
@@ -33,7 +37,6 @@
         - Fixed a bug where the custom block  "demo-block"  would throw errors because of an incompatible  "sync-state"
         - Small bugfixes and improvements
         - Known bug: sometimes custom blocks with active  "sync-states"  will cause an error about  "sync_states"  and  "disguised-data"  when being pulled by a piston with a slime block, even though the block appears to be disguised correctly
-        - Known bug: custom blocks'  "item"  tags don't work correctly with custom names because of a yaml error
 
 
 1.1.2     7/26/21

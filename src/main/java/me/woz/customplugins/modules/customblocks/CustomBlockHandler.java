@@ -522,6 +522,7 @@ public class CustomBlockHandler implements Listener {
         if (id != null && idToDefinitionFile.containsKey(id)) {
             YamlConfiguration yaml = idToDefinitionFile.get(id);
             String itemString = yaml.getString(id + ".item");
+
             if (itemString != null) {
                 NBTItem nbtItem = new NBTItem(NBTItem.convertNBTtoItem(new NBTContainer(itemString)));
                 NBTCompound nbtCompound = nbtItem.getOrCreateCompound("WoZItem");

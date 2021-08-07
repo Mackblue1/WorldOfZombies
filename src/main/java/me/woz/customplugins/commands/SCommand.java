@@ -1,6 +1,7 @@
 package me.woz.customplugins.commands;
 
 import me.woz.customplugins.WorldOfZombies;
+import me.woz.customplugins.commands.woz.ItemCommand;
 import me.woz.customplugins.commands.woz.ReloadCommand;
 import me.woz.customplugins.commands.woz.GetCustomItemCommand;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
@@ -41,6 +42,7 @@ public class SCommand implements CommandExecutor {
 
         commandHandler.registerCommand("info", info, "", "Displays information about this plugin");
         commandHandler.registerCommand("reload", new ReloadCommand(main, customBlockHandler, getCustomItemCommand, sCommandTab), "", "Reloads the plugin's config files");
+        commandHandler.registerMultiArgCommand(new ItemCommand(main), " (-yaml)", "Sends the player the NBT API string for the item in their main hand", "item", "nbt");
     }
 
     //primary command handler that calls CommandHandler#handleCommand() and handles command error messages
@@ -62,7 +64,7 @@ public class SCommand implements CommandExecutor {
             }
         }
 
-        return false;
+        return true;
     }
 }
 

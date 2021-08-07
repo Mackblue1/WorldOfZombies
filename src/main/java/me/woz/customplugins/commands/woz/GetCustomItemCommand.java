@@ -54,7 +54,9 @@ public class GetCustomItemCommand implements SubCommand {
                         }
 
                         if (item != null) {
-                            if (!((Player) sender).getInventory().addItem(item).isEmpty()) {
+                            if (((Player) sender).getInventory().addItem(item).isEmpty()) {
+                                sender.sendMessage("[WorldOfZombies] " + ChatColor.GREEN + "Obtained item " + ChatColor.YELLOW + id);
+                            } else {
                                 sender.sendMessage(ChatColor.RED + "The item \"" + id + "\" could not be added to your inventory because it is full!");
                             }
                         }
