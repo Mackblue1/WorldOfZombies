@@ -32,7 +32,7 @@
             - Also renamed the tags from  "IsCustomBlock"  and  "CustomBlock"  to  "IsCustomItem"  and  "CustomItem"
             - New NBT format is:  "WoZItem: { IsCustomBlock:[boolean], CustomItem: [item id] }"
 
-    Bux Fixes:
+    Bug Fixes:
         - Fixed a bug where custom block IDs wouldn't be properly removed after deleting their definition and reloading the plugin
         - Fixed a bug where the custom block  "demo-block"  would throw errors because of an incompatible  "sync-state"
         - Small bugfixes and improvements
