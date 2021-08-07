@@ -42,8 +42,18 @@ public class SCommandTab implements TabCompleter {
             completions = getApplicableTabCompleter(args[1], completions);
         } else if (args.length == 2 && args[0].equalsIgnoreCase("get")) {
             completions = getApplicableTabCompleter(args[1], customItems);
+        } else if (args[0].equalsIgnoreCase("item")) {
+            if (args.length == 2) {
+                completions = new ArrayList<>(Arrays.asList("nbt"));
+                completions = getApplicableTabCompleter(args[1], completions);
+            } else if (args.length == 3) {
+                completions = new ArrayList<>(Arrays.asList("-yaml"));
+                completions = getApplicableTabCompleter(args[2], completions);
+            }
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("")) {
+
         } else if (args.length <= 1) {
-            completions = new ArrayList<>(Arrays.asList("reload", "database", "info", "get"));
+            completions = new ArrayList<>(Arrays.asList("reload", "database", "info", "get", "item"));
             completions = getApplicableTabCompleter(args.length == 1 ? args[0] : "", completions);
         }
         Collections.sort(completions);
