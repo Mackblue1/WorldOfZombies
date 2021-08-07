@@ -118,7 +118,7 @@ public class CustomBlockHandler implements Listener {
                         String id = logYaml.getString(sectionString + "." + key);
 
                         BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false);
-                        if (!block.getBlockData().matches(actualData)) {
+                        if (actualData.getMaterial() != Material.AIR && !block.getBlockData().matches(actualData)) {
                             if (debug >= 3) {
                                 console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because the BlockData of that block does not match the source \"actual-block\"");
                             }
@@ -517,6 +517,32 @@ public class CustomBlockHandler implements Listener {
         return false;
     }
 
+    //gets the ItemStack specified in the "item" tag of a block definition from an id, throws a NullPointerException if the tag doesn't exist
+    public ItemStack getItemFromID(String id) {
+        if (id != null && idToDefinitionFile.containsKey(id)) {
+            YamlConfiguration yaml = idToDefinitionFile.get(id);
+            String itemString = yaml.getString(id + ".item");
+            if (itemString != null) {
+                NBTItem nbtItem = new NBTItem(NBTItem.convertNBTtoItem(new NBTContainer(itemString)));
+                NBTCompound nbtCompound = nbtItem.getOrCreateCompound("WoZItem");
+
+                if (!nbtCompound.getBoolean("IsCustomItem")) {
+                    nbtCompound.setBoolean("IsCustomItem", true);
+                }
+
+                if (nbtCompound.getString("CustomItem").equals("")) {
+                    nbtCompound.setString("CustomItem", id);
+                }
+
+                return nbtItem.getItem();
+            } else {
+                throw new NullPointerException();
+            }
+        }
+
+        return null;
+    }
+
     //when a player places a block, log the location and disguised-block, and set the server block to actual-data if it exists in the definition
     @EventHandler(priority = EventPriority.HIGHEST)
     public void blockPlaceEvent(BlockPlaceEvent event) {
@@ -525,7 +551,6 @@ public class CustomBlockHandler implements Listener {
         World world = block.getWorld();
 
         ItemStack item = event.getItemInHand();
-
         NBTCompound wozItemComp = new NBTItem(item).getOrCreateCompound("WoZItem");
         String id = wozItemComp.getString("CustomItem");
         String sourceFilePath = idToDefinitionFilePath.get(id);
@@ -643,7 +668,6 @@ public class CustomBlockHandler implements Listener {
         if (handleMovedBlocks(event.getBlocks(), event.getDirection(), true)) {
             event.setCancelled(true);
         }
-
     }
 
     //calls handleMovedBlocks() to check if the event should be cancelled, and cancels if it should
@@ -707,7 +731,7 @@ public class CustomBlockHandler implements Listener {
                         String id = getLoggedStringFromLocation(loc);
                         if (id != null) {
                             BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false);
-                            if (block.getBlockData().matches(actualData)) {
+                            if (actualData.getMaterial() == Material.AIR || block.getBlockData().matches(actualData)) {
                                 BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
                                 if (disguisedData != null) {
                                     if (disguisedData.getMaterial() == Material.AIR) {
@@ -722,7 +746,7 @@ public class CustomBlockHandler implements Listener {
                                         }
                                     }
                                 }
-                            } else if (debug >= 3) {
+                            } else if (actualData.getMaterial() != Material.AIR && debug >= 3) {
                                 console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because the BlockData of that block does not match the source \"actual-block\"");
                             }
                         }
@@ -760,7 +784,7 @@ public class CustomBlockHandler implements Listener {
                             String id = getLoggedStringFromLocation(loc);
                             if (id != null) {
                                 BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false);
-                                if (block.getBlockData().matches(actualData)) {
+                                if (actualData.getMaterial() == Material.AIR || block.getBlockData().matches(actualData)) {
                                     BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
                                     if (disguisedData != null) {
                                         if (disguisedData.getMaterial() == Material.AIR) {
@@ -775,7 +799,7 @@ public class CustomBlockHandler implements Listener {
                                             }
                                         }
                                     }
-                                } else if (debug >= 3) {
+                                } else if (actualData.getMaterial() != Material.AIR && debug >= 3) {
                                     console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because the BlockData of that block does not match the source \"actual-block\"");
                                 }
                             }

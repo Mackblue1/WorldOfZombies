@@ -6,6 +6,7 @@ import me.woz.customplugins.commands.CommandHandler;
 import me.woz.customplugins.commands.SCommand;
 import me.woz.customplugins.commands.TestCommand;
 import me.woz.customplugins.commands.woz.BlockDatabaseCommands;
+import me.woz.customplugins.commands.woz.GetCustomItemCommand;
 import me.woz.customplugins.commands.SCommandTab;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.configuration.ConfigurationSection;
@@ -26,6 +27,8 @@ public class WorldOfZombies extends JavaPlugin {
 
     private CommandHandler commandHandler;
     private CustomBlockHandler customBlockHandler;
+    private SCommandTab sCommandTab;
+    private GetCustomItemCommand getCustomItemCommand;
 
     private File configFile;
     private FileConfiguration config;
@@ -54,10 +57,14 @@ public class WorldOfZombies extends JavaPlugin {
             commandHandler.registerMultiArgCommand(blockDatabaseCommands, "", "Confirms a previous database command", "database", "confirm");
             commandHandler.registerMultiArgCommand(blockDatabaseCommands, " [world]", "Deletes the custom block database for a world", "database", "delete");
             commandHandler.registerMultiArgCommand(blockDatabaseCommands, " [world1] [world2]", "Clones the database from  world1  to  world2", "database", "clone");
+
+            getCustomItemCommand = new GetCustomItemCommand(this, customBlockHandler);
+            commandHandler.registerCommand("get", getCustomItemCommand, " [id] ", "Gives the player the item specified in a custom block's \"item\" definition tag");
         }
 
-        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockHandler));
-        getCommand("worldofzombies").setTabCompleter(new SCommandTab(this));
+        sCommandTab = new SCommandTab(this, customBlockHandler);
+        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockHandler, sCommandTab, getCustomItemCommand));
+        getCommand("worldofzombies").setTabCompleter(sCommandTab);
         getCommand("bb").setExecutor(new TestCommand(this, customBlockHandler));
 
         console.info(ChatColor.GREEN + "World of Zombies custom plugin loaded successfully!");

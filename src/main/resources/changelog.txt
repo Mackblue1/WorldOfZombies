@@ -1,9 +1,14 @@
 1.1.3     _/__/21
     New Features:
+        - Added the command  "/woz get [item id]"  which gives a player the item spefied in the  "item"  section of the custom block's definition
+            - The new permission  "worldofzombies.command.get"  has been added for this command
+            - This command includes dynamic tab completion based on the active custom blocks from the most recent plugin reload
+            - If the item doesn't have the required custom block NBT tags, they will be added to the item automatically
         - Added a MultiBlockChange packet listener with same functionality as existing BlockChange packet listener
         - Added an error message when a duplicate custom block ID definition is detected
         - Custom block definition yaml files are now ONLY loaded on startup and  /woz reload  to increase performance
         - Added a check in BlockChange and MultiBlockChange packets so that blocks will only be disguised if they match the  "actual-data"  in the block's definition
+            - If  "actual-block"  is null, this check will be skipped
         - More details for all new custom block features can be found in the file  WorldOfZombies\CustomItems\demo.yml
         - Improved "item" custom block drop tag to include anything in the Material class
         - Added functionality to calculate which custom blocks will drop items based on the "yield" of explosions
@@ -28,6 +33,7 @@
         - Fixed a bug where the custom block  "demo-block"  would throw errors because of an incompatible  "sync-state"
         - Small bugfixes and improvements
         - Known bug: sometimes custom blocks with active  "sync-states"  will cause an error about  "sync_states"  and  "disguised-data"  when being pulled by a piston with a slime block, even though the block appears to be disguised correctly
+        - Known bug: custom blocks'  "item"  tags don't work correctly with custom names because of a yaml error
 
 
 1.1.2     7/26/21

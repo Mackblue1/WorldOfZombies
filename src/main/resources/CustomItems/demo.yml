@@ -8,7 +8,7 @@
 
 demo-block:
   #  As of version 1.1.2, functionality for this option has not been added but is planned for future versions
-  item: '{id:"minecraft:emerald",Count:1b}'
+  item: '{id:"minecraft:stone",Count:1b}'
   block:
     #  "actual-block" and "disguised-block" here are the same as the tags on custom block items in version 1.1.1
     #  If "actual-block" is empty, the server-side will not be changed when the custom block is placed

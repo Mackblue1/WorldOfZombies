@@ -1,6 +1,7 @@
 package me.woz.customplugins.commands;
 
 import me.woz.customplugins.WorldOfZombies;
+import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
@@ -18,9 +19,18 @@ public class SCommandTab implements TabCompleter {
      */
 
     private final WorldOfZombies main;
+    private final CustomBlockHandler customBlockHandler;
 
-    public SCommandTab(WorldOfZombies main) {
+    private List<String> customItems;
+
+    public SCommandTab(WorldOfZombies main, CustomBlockHandler customBlockHandler) {
         this.main = main;
+        this.customBlockHandler = customBlockHandler;
+        reloadCompletions();
+    }
+
+    public void reloadCompletions() {
+        customItems = new ArrayList<>(customBlockHandler.getIdToDefinitionFile().keySet());
     }
 
     //handles tab completion based on the length of the currently typed arguments
@@ -30,8 +40,10 @@ public class SCommandTab implements TabCompleter {
         if (args.length == 2 && args[0].equalsIgnoreCase("database")) {
             completions = new ArrayList<>(Arrays.asList("delete", "clone", "confirm"));
             completions = getApplicableTabCompleter(args[1], completions);
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("get")) {
+            completions = getApplicableTabCompleter(args[1], customItems);
         } else if (args.length <= 1) {
-            completions = new ArrayList<>(Arrays.asList("reload", "database", "info"));
+            completions = new ArrayList<>(Arrays.asList("reload", "database", "info", "get"));
             completions = getApplicableTabCompleter(args.length == 1 ? args[0] : "", completions);
         }
         Collections.sort(completions);

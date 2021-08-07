@@ -1,6 +1,7 @@
 package me.woz.customplugins.commands.woz;
 
 import com.comphenix.protocol.events.PacketContainer;
+import de.tr7zw.nbtapi.NbtApiException;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.commands.SubCommand;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
@@ -8,6 +9,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.Set;
 import java.util.logging.Logger;
@@ -33,19 +35,29 @@ public class GetCustomItemCommand implements SubCommand {
 
     @Override
     public boolean subCommand(CommandSender sender, Command cmd, String alias, String[] args) {
-        if (sender.hasPermission("worldofzombies.command.reload")) {
+        if (sender.hasPermission("worldofzombies.command.get")) {
             if (sender instanceof Player) {
                 if (customBlockHandler != null) {
                     if (args.length == 0) {
                         throw new IllegalArgumentException("Invalid command");
                     }
 
-                    String id = args[1];
+                    String id = args[0];
                     if (itemStrings.contains(id)) {
-                        if (!((Player) sender).getInventory().addItem(customBlockHandler.getItemFromID(id)).isEmpty()) {
-                            sender.sendMessage(ChatColor.RED + "The item \"" + id + "\" could not be added to your inventory because it is full!");
+                        ItemStack item;
+                        try {
+                            item = customBlockHandler.getItemFromID(id);
+                        } catch (NbtApiException | NullPointerException e) {
+                            sender.sendMessage(ChatColor.RED + "The \"item\" tag for the custom block \"" + id + "\" is invalid or null!");
+                            console.severe(ChatColor.RED + "The \"item\" tag for the custom block \"" + id + "\" is invalid or null");
+                            return true;
                         }
-                        return true;
+
+                        if (item != null) {
+                            if (!((Player) sender).getInventory().addItem(item).isEmpty()) {
+                                sender.sendMessage(ChatColor.RED + "The item \"" + id + "\" could not be added to your inventory because it is full!");
+                            }
+                        }
                     } else {
                         sender.sendMessage(ChatColor.RED + "\"" + id + "\" is not a valid custom item!");
                     }
@@ -59,6 +71,6 @@ public class GetCustomItemCommand implements SubCommand {
             sender.sendMessage(ChatColor.RED + "You do not have permission to run this command!");
         }
 
-        return false;
+        return true;
     }
 }

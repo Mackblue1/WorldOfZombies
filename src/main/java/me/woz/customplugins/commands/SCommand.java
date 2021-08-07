@@ -2,6 +2,7 @@ package me.woz.customplugins.commands;
 
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.commands.woz.ReloadCommand;
+import me.woz.customplugins.commands.woz.GetCustomItemCommand;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -24,18 +25,22 @@ public class SCommand implements CommandExecutor {
     private final WorldOfZombies main;
     private final CommandHandler commandHandler;
     private final FileConfiguration config;
+    private final SCommandTab sCommandTab;
+    private final GetCustomItemCommand getCustomItemCommand;
 
     private final InfoCommand info;
 
     //registers specific subCommands using CommandHandler
-    public SCommand(WorldOfZombies main, CommandHandler commandHandler, CustomBlockHandler customBlockHandler) {
+    public SCommand(WorldOfZombies main, CommandHandler commandHandler, CustomBlockHandler customBlockHandler, SCommandTab sCommandTab, GetCustomItemCommand getCustomItemCommand) {
         this.main = main;
-        this.config = main.getConfig();
         this.commandHandler = commandHandler;
+        config = main.getConfig();
+        this.sCommandTab = sCommandTab;
+        this.getCustomItemCommand = getCustomItemCommand;
         info = new InfoCommand(main, config, commandHandler);
 
         commandHandler.registerCommand("info", info, "", "Displays information about this plugin");
-        commandHandler.registerCommand("reload", new ReloadCommand(main, customBlockHandler), "", "Reloads the plugin's config files");
+        commandHandler.registerCommand("reload", new ReloadCommand(main, customBlockHandler, getCustomItemCommand, sCommandTab), "", "Reloads the plugin's config files");
     }
 
     //primary command handler that calls CommandHandler#handleCommand() and handles command error messages

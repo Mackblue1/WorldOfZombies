@@ -1,7 +1,9 @@
 package me.woz.customplugins.commands.woz;
 
 import me.woz.customplugins.WorldOfZombies;
+import me.woz.customplugins.commands.SCommandTab;
 import me.woz.customplugins.commands.SubCommand;
+import me.woz.customplugins.commands.woz.GetCustomItemCommand;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -14,11 +16,15 @@ public class ReloadCommand implements SubCommand {
 
     private final WorldOfZombies main;
     private final CustomBlockHandler customBlockHandler;
+    private final GetCustomItemCommand getCustomItemCommand;
+    private final SCommandTab sCommandTab;
     private final Logger console;
 
-    public ReloadCommand(WorldOfZombies main, CustomBlockHandler customBlockHandler) {
+    public ReloadCommand(WorldOfZombies main, CustomBlockHandler customBlockHandler, GetCustomItemCommand getCustomItemCommand, SCommandTab sCommandTab) {
         this.main = main;
         this.customBlockHandler = customBlockHandler;
+        this.getCustomItemCommand = getCustomItemCommand;
+        this.sCommandTab = sCommandTab;
         console = main.getLogger();
     }
 
@@ -32,6 +38,12 @@ public class ReloadCommand implements SubCommand {
                 customBlockHandler.reloadConfigs();
             } else {
                 console.info(ChatColor.AQUA + "The custom block config was not reloaded because the custom blocks module is disabled");
+            }
+            if (getCustomItemCommand != null) {
+                getCustomItemCommand.reloadItems();
+                sCommandTab.reloadCompletions();
+            } else {
+                console.info(ChatColor.AQUA + "The \"/woz get\" command was not reloaded because the custom blocks module is disabled");
             }
 
             if (sender instanceof Player) {

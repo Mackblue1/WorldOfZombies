@@ -1,6 +1,8 @@
 package me.woz.customplugins.commands;
 
 import com.destroystokyo.paper.entity.ai.*;
+import de.tr7zw.nbtapi.NBTCompound;
+import de.tr7zw.nbtapi.NBTItem;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.*;
@@ -14,6 +16,7 @@ import org.bukkit.entity.Mob;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.Collection;
 import java.util.EnumSet;
@@ -45,8 +48,11 @@ public class TestCommand implements CommandExecutor {
 
             Block target = player.getTargetBlock(10);
             //BlockData data = target.getBlockData();
+            ItemStack item = player.getInventory().getItemInMainHand();
 
-            player.sendMessage(ChatColor.GREEN + "chunk: " + chunk.getX() + ", " + chunk.getZ() + "   local target: " + (target.getX() & 0xF) + ", " + (target.getY() & 0xF) + ", " + (target.getZ() & 0xF));
+            console.info(NBTItem.convertItemtoNBT(item).toString());
+
+            //player.sendMessage(ChatColor.GREEN + "chunk: " + chunk.getX() + ", " + chunk.getZ() + "   local target: " + (target.getX() & 0xF) + ", " + (target.getY() & 0xF) + ", " + (target.getZ() & 0xF));
 
             //customBlockHandler.moveLoggedBlock(target.getLocation(), target.getLocation().add(0, 1, 0));
 
