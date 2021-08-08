@@ -65,7 +65,7 @@ public class WorldOfZombies extends JavaPlugin {
         sCommandTab = new SCommandTab(this, customBlockHandler);
         getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockHandler, sCommandTab, getCustomItemCommand));
         getCommand("worldofzombies").setTabCompleter(sCommandTab);
-        getCommand("bb").setExecutor(new TestCommand(this, customBlockHandler));
+        getCommand("bb").setExecutor(new TestCommand(this, pm, customBlockHandler));
 
         console.info(ChatColor.GREEN + "World of Zombies custom plugin loaded successfully!");
         console.info("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾");

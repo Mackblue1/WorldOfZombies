@@ -1,6 +1,5 @@
 package me.woz.customplugins.commands.woz;
 
-import com.comphenix.protocol.events.PacketContainer;
 import de.tr7zw.nbtapi.NbtApiException;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.commands.SubCommand;

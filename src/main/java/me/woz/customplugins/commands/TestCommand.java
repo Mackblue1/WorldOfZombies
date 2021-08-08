@@ -1,5 +1,10 @@
 package me.woz.customplugins.commands;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.BlockPosition;
+import com.comphenix.protocol.wrappers.WrappedBlockData;
 import com.destroystokyo.paper.entity.ai.*;
 import de.tr7zw.nbtapi.NBTCompound;
 import de.tr7zw.nbtapi.NBTItem;
@@ -18,6 +23,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
 import org.bukkit.inventory.ItemStack;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.logging.Logger;
@@ -26,11 +32,13 @@ public class TestCommand implements CommandExecutor {
 
     private final WorldOfZombies main;
     private final Logger console;
+    private final ProtocolManager pm;
     private final CustomBlockHandler customBlockHandler;
 
-    public TestCommand(WorldOfZombies main, CustomBlockHandler handler) {
+    public TestCommand(WorldOfZombies main, ProtocolManager pm, CustomBlockHandler handler) {
         this.main = main;
         this.console = main.getLogger();
+        this.pm = pm;
         this.customBlockHandler = handler;
     }
 
@@ -48,9 +56,17 @@ public class TestCommand implements CommandExecutor {
 
             Block target = player.getTargetBlock(10);
             //BlockData data = target.getBlockData();
+            Material material = target.getType();
             ItemStack item = player.getInventory().getItemInMainHand();
 
-            console.info(NBTItem.convertItemtoNBT(item).toString());
+            PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
+            packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK.createBlockData()));
+            packet.getBlockPositionModifier().writeSafely(0, new BlockPosition(target.getX(), target.getY(), target.getZ()));
+            try {
+                pm.sendServerPacket(player, packet);
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
 
             //player.sendMessage(ChatColor.GREEN + "chunk: " + chunk.getX() + ", " + chunk.getZ() + "   local target: " + (target.getX() & 0xF) + ", " + (target.getY() & 0xF) + ", " + (target.getZ() & 0xF));
 

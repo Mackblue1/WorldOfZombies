@@ -2,7 +2,7 @@
 #  This is an example of 2 different custom block definitions and their drops
 #  Custom drops are not required, and blocks will work normally with just "actual-block" and "disguised-block"
 #  All tags in a definition are optional except "actual-block" and "disguised-block" ("drops.enabled" is required if the rest of the "drops" is empty)
-#  Inside of the parent "drops" section, there is no restriction on the amount of child drop sections or their names
+#  Inside of the parent "drops" section and for item sections inside any "drop" section, there is no restriction on the amount of child drop sections or their names
 #  Each tag outside the parent "drops" section cannot appear more than once, and tags inside a child drop section cannot appear more than once in a single drop section
 #
 
@@ -45,17 +45,19 @@ demo-block:
       cancel-xp: true
 
       axe:
-        #  As of 1.1.2, this only includes the official names of required enchantments on the item that broke the custom block
+        #  As of 1.1.3, this only includes the official names of required enchantments on the item that broke the custom block
         #  If the item is missing any of these enchantments, then this section will be exited
         conditions:
           - silk_touch
 
-        #  "nbt-item" has priority over "item", so "item" will always be ignored if "nbt-item" appears in the same drop section
-        nbt-item: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
+        #  This is an item section, which has no name restrictions and contains either "nbt-item" or "custom-item", and "count"
+        damaged-axe:
+          #  Adds an item with
+          nbt-item: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
 
-        #  Sets the amount to drop of an item to this value
-        #  "count" has priority over "min" & "max", so "min" & "max" will always be ignored if "count" appears in the same drop section
-        count: 2
+          #  If this is an integer, sets the amount to drop of an item to this value, defaults to 1
+          #  If this is two integers separated by a "-", sets the amount to drop of an item to a random number between the two values (inclusive)
+          count: 2-3
 
       dirt:
         #  "chance" must be a decimal greater than or equal to 0 and less than 1
@@ -72,17 +74,14 @@ demo-block:
         #  Multiplies the dropped xp by this value
         multiply-xp: 1.5
 
-        #  This tag should only contain a BlockData string, which is the same type of string as "actual-data" and "disguised-data"
+        #  This is
         item: dirt
 
-        #  Sets the amount to drop of an item to a random number between these values (inclusive)
-        #  If "count" or "min" & "max" are not specified, the item amount will default to 1
-        min: 1
-        max: 4
       cake:
-        #  As of version 1.1.2, functionality for this option has not been added but is planned for future versions
-        custom-item:
-          id: zombie-cake
+        new-cake:
+          custom-item: zombie-cake
+          #  (IS THIS POSSIBLE?) Adds NBT tag(s) to a "custom-item" in this section
+          #  This tag is not used if the item is an "nbt-item"
           nbt: '{DroppedFromZombieBlock:1b}'
           count: 2
 
