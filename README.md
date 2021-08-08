@@ -1,8 +1,8 @@
 # World of Zombies Custom Plugin
 
-The primary custom plugin for the World of Zombies Minecraft server.
+The primary custom plugin for the World of Zombies Minecraft server
 
-### Plugin Version
+### Latest Release Plugin Version
 
 1.1.2
 
