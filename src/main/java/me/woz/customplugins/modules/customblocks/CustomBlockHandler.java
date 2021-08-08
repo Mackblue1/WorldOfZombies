@@ -404,28 +404,61 @@ public class CustomBlockHandler implements Listener {
                             newDrops.add(item);*/
 
                             Set<String> keys = dropSection.getKeys(false);
-                            //children of a main drop section, includes keys like "chance" and "conditions"
+                            //children of a main drop section, includes keys like "chance", "conditions", and items
                             for (String key : keys) {
                                 Material material = Material.matchMaterial(key);
-                                if (material != null) {
-                                    //vanilla item without NBT:   [material]: [count]
-                                    Object value = dropSection.get(key);
-                                    int count = 1;
+                                ItemStack item;
+                                if (idToDefinitionFile.containsKey(key)) {
+                                    //custom item
+                                    item = getItemFromID(key);
+                                } else if (material != null) {
+                                    //vanilla material
+                                    item = new ItemStack(material);
+                                } else {
+                                    if (!key.equalsIgnoreCase("chance") && !key.equalsIgnoreCase("conditions") && !key.equalsIgnoreCase("set-xp") && !key.equalsIgnoreCase("add-xp") && !key.equalsIgnoreCase("multiply-xp")) {
+                                        if (debug >= 3) {
+                                            console.warning(ChatColor.YELLOW + "The item \"" + key + "\" in the drop section \"" + drop + "\" of the custom block \"" + id + "\" is not a valid custom item id or vanilla item type");
+                                        }
+                                    }
+                                    continue;
+                                }
 
-                                    if (value instanceof Integer) {
-                                        count = (Integer) value;
-                                    } else if (value instanceof String && ((String) value).contains("-") && ((String) value).length() >= 3) {
-                                        String[] range = ((String) value).split("-");
-                                        int min = Integer.parseInt(range[0]);
-                                        int max = Integer.parseInt(range[1]);
-                                        count = (int) (Math.random() * (max - min + 1) + min);
+                                if (dropSection.isConfigurationSection(key)) {
+                                    //configuration section format: material or custom item id as key, count and nbt as children
+                                    ConfigurationSection itemSection = dropSection.getConfigurationSection(key);
+                                    if (itemSection.contains("nbt")) {
+                                        NBTItem nbtItem = new NBTItem(item);
+                                        String nbtString = itemSection.getString("nbt");
+                                        NBTCompound nbtMerge;
+
+                                        if (nbtString.contains("id:") && nbtString.contains("Count:")) {
+                                            //"nbt" is a full nbt item string
+                                            nbtMerge = new NBTItem(NBTItem.convertNBTtoItem(new NBTContainer(nbtString)));
+                                        } else {
+                                            //"nbt" is just keys and not a full item
+                                            nbtMerge = new NBTContainer(nbtString);
+                                        }
+
+                                        nbtItem.mergeCompound(nbtMerge);
+                                        item = nbtItem.getItem();
                                     }
 
-                                    newDrops.add(new ItemStack(material, count));
-                                } else if (dropSection.isConfigurationSection(key)) {
-                                    //nbt item or custom item
-                                    ConfigurationSection itemSection = dropSection.getConfigurationSection(key);
-                                    if (itemSection.contains("nbt-item")) {
+                                    if (itemSection.contains("count")) {
+                                        Object value = itemSection.get("count");
+                                        int count = 1;
+
+                                        if (value instanceof Integer) {
+                                            count = (Integer) value;
+                                        } else if (value instanceof String && ((String) value).contains("-") && ((String) value).length() >= 3) {
+                                            String[] range = ((String) value).split("-");
+                                            int min = Integer.parseInt(range[0]);
+                                            int max = Integer.parseInt(range[1]);
+                                            count = (int) (Math.random() * (max - min + 1) + min);
+                                        }
+                                        item.setAmount(count);
+                                    }
+
+                                    /*if (itemSection.contains("nbt-item")) {
                                         String nbtString = itemSection.getString("nbt-item");
                                         Object value = itemSection.get("count");
                                         int count = 1;
@@ -468,8 +501,25 @@ public class CustomBlockHandler implements Listener {
                                         } catch (NbtApiException | NullPointerException e) {
                                             console.severe(ChatColor.RED + "The \"item\" tag for the custom block \"" + customItemID + "\" is invalid or null");
                                         }
+                                    }*/
+
+                                } else {
+                                    //vanilla item without NBT:   [material]: [count]
+                                    Object value = dropSection.get(key);
+                                    int count = 1;
+
+                                    if (value instanceof Integer) {
+                                        count = (Integer) value;
+                                    } else if (value instanceof String && ((String) value).contains("-") && ((String) value).length() >= 3) {
+                                        String[] range = ((String) value).split("-");
+                                        int min = Integer.parseInt(range[0]);
+                                        int max = Integer.parseInt(range[1]);
+                                        count = (int) (Math.random() * (max - min + 1) + min);
                                     }
+
+                                    item.setAmount(count);
                                 }
+                                newDrops.add(item);
                             }
                         }
                     }

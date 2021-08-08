@@ -46,6 +46,17 @@ public class GetCustomItemCommand implements SubCommand {
                         ItemStack item;
                         try {
                             item = customBlockHandler.getItemFromID(id);
+                            if (args.length >= 2) {
+                                try {
+                                    int count = Integer.parseInt(args[1]);
+                                    if (count < 1) {
+                                        sender.sendMessage(ChatColor.RED + "The amount \"" + args[1] + "\" must be greater than 0!");
+                                    }
+                                    item.setAmount(count);
+                                } catch (NumberFormatException e) {
+                                    sender.sendMessage(ChatColor.RED + "\"" + args[1] + "\" is not a valid amount!");
+                                }
+                            }
                         } catch (NbtApiException | NullPointerException e) {
                             sender.sendMessage(ChatColor.RED + "The \"item\" tag for the custom block \"" + id + "\" is invalid or null!");
                             console.severe(ChatColor.RED + "The \"item\" tag for the custom block \"" + id + "\" is invalid or null");
@@ -54,9 +65,13 @@ public class GetCustomItemCommand implements SubCommand {
 
                         if (item != null) {
                             if (((Player) sender).getInventory().addItem(item).isEmpty()) {
-                                sender.sendMessage("[WorldOfZombies] " + ChatColor.GREEN + "Obtained item " + ChatColor.YELLOW + id);
+                                sender.sendMessage("[WorldOfZombies] " + ChatColor.GREEN + "Obtained " + item.getAmount() + " of the item " + ChatColor.YELLOW + id);
                             } else {
-                                sender.sendMessage(ChatColor.RED + "The item \"" + id + "\" could not be added to your inventory because it is full!");
+                                if (item.getAmount() == 1) {
+                                    sender.sendMessage(ChatColor.RED + "The item \"" + id + "\" could not be added to your inventory because it is full!");
+                                } else {
+                                    sender.sendMessage(ChatColor.RED + "More than one of the item \"" + id + "\" could not be added to your inventory because it is full!");
+                                }
                             }
                         }
                     } else {

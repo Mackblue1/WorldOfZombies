@@ -15,9 +15,9 @@ commands:
     description: Main plugin command which is used to run all sub-commands
     aliases: [woz]
     usage: "§cUsage: /woz [command] [args]"
-  bb:
+  woztest:
     description: Test random features (should not be used without knowing specifically what this does because its functionality changes often)
-    usage: "§cUsage: /bb"
+    usage: "§cUsage: /woztest"
     permission: worldofzombies.*
 
 permissions:

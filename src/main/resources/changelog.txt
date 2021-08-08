@@ -1,6 +1,6 @@
 1.1.3     _/__/21
     New Features:
-        - Added the command  "/woz get [item id]"  which gives a player the item spefied in the  "item"  section of the custom block's definition
+        - Added the command  "/woz get [item id]"  which gives a player the item specified in the  "item"  section of the custom block's definition
             - The new permission  "worldofzombies.command.get"  has been added for this command
             - This command includes dynamic tab completion based on the active custom blocks from the most recent plugin reload
             - If the item doesn't have the required custom block NBT tags, they will be added to the item automatically
@@ -34,6 +34,7 @@
             - MAKE SURE TO CHANGE THE NBT FORMAT IN ALL CUSTOM ITEMS OR ELSE CUSTOM BLOCKS WILL NOT WORK
             - Also renamed the tags from  "IsCustomBlock"  and  "CustomBlock"  to  "IsCustomItem"  and  "CustomItem"
             - New NBT format is:  "WoZItem: { IsCustomBlock:[boolean], CustomItem: [item id] }"
+        - Changed test command from  /bb  to  /woztest  (should not be used without knowing exactly what this command does)
 
     Bug Fixes:
         - Fixed a bug where custom block IDs wouldn't be properly removed after deleting their definition and reloading the plugin

@@ -59,13 +59,13 @@ public class WorldOfZombies extends JavaPlugin {
             commandHandler.registerMultiArgCommand(blockDatabaseCommands, " [world1] [world2]", "Clones the database from  world1  to  world2", "database", "clone");
 
             getCustomItemCommand = new GetCustomItemCommand(this, customBlockHandler);
-            commandHandler.registerCommand("get", getCustomItemCommand, " [id] ", "Gives the player the item specified in a custom block's \"item\" definition tag");
+            commandHandler.registerCommand("get", getCustomItemCommand, " [id] (amount)", "Gives the player the item specified in a custom block's \"item\" definition tag");
         }
 
         sCommandTab = new SCommandTab(this, customBlockHandler);
         getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockHandler, sCommandTab, getCustomItemCommand));
         getCommand("worldofzombies").setTabCompleter(sCommandTab);
-        getCommand("bb").setExecutor(new TestCommand(this, pm, customBlockHandler));
+        getCommand("woztest").setExecutor(new TestCommand(this, pm, customBlockHandler));
 
         console.info(ChatColor.GREEN + "World of Zombies custom plugin loaded successfully!");
         console.info("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾");

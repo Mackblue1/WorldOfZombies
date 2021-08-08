@@ -2,7 +2,7 @@
 #  This is an example of 2 different custom block definitions and their drops
 #  Custom drops are not required, and blocks will work normally with just "actual-block" and "disguised-block"
 #  All tags in a definition are optional except "actual-block" and "disguised-block" ("drops.enabled" is required if the rest of the "drops" is empty)
-#  Inside of the parent "drops" section and for item sections inside any "drop" section, there is no restriction on the amount of child drop sections or their names
+#  Inside of the parent "drops" section, there is no restriction on the amount of child drop sections or their names
 #  Each tag outside the parent "drops" section cannot appear more than once, and tags inside a child drop section cannot appear more than once in a single drop section
 #
 
@@ -50,10 +50,10 @@ demo-block:
         conditions:
           - silk_touch
 
-        #  This is an item section, which has no name restrictions and contains either "nbt-item" or "custom-item", and "count"
-        damaged-axe:
-          #  Adds an item with
-          nbt-item: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
+        #  This is the full format for an item section, whose name is a valid Bukkit Material name or custom item id
+        diamond:
+          #  Adds nbt tags to an item, can be either a full item NBT (shown here) or just NBT tags (shown in the item section cake.no-drops-block)
+          nbt: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
 
           #  If this is an integer, sets the amount to drop of an item to this value, defaults to 1
           #  If this is two integers separated by a "-", sets the amount to drop of an item to a random number between the two values (inclusive)
@@ -74,19 +74,17 @@ demo-block:
         #  Multiplies the dropped xp by this value
         multiply-xp: 1.5
 
-        #  This is
-        item: dirt
+        #  This is the shortened format for an item, where the key is the name is a valid Bukkit Material or custom item id, and the value represents the "count" tag in a full formatted item section
+        dirt: 2
 
       cake:
-        new-cake:
+        no:
           custom-item: zombie-cake
-          #  (IS THIS POSSIBLE?) Adds NBT tag(s) to a "custom-item" in this section
-          #  This tag is not used if the item is an "nbt-item"
-          nbt: '{DroppedFromZombieBlock:1b}'
+          nbt: '{DroppedFromDemoBlock:1b}'
           count: 2
 
 no-drops-block:
-  item: '{id:"minecraft:dirt"}'
+  item: '{id:"minecraft:cake",Count:1b}'
   block:
     disguised-block: gold_block
     drops:
