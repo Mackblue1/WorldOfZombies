@@ -3,7 +3,6 @@ package me.woz.customplugins.commands.woz;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.commands.SCommandTab;
 import me.woz.customplugins.commands.SubCommand;
-import me.woz.customplugins.commands.woz.GetCustomItemCommand;
 import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -35,7 +34,7 @@ public class ReloadCommand implements SubCommand {
             main.reloadConfig();
             main.createConfigs();
             if (customBlockHandler != null) {
-                customBlockHandler.reloadConfigs();
+                customBlockHandler.reload();
             } else {
                 console.info(ChatColor.AQUA + "The custom block config was not reloaded because the custom blocks module is disabled");
             }

@@ -131,7 +131,7 @@ public class MultiBlockChangeWrap {
                 if (debug >= 1) {
                     console.info(ChatColor.DARK_GREEN + "Sent a packet with " + blockData.size() + " blocks in the subchunk at " + subChunkPos.getX() + ", " + subChunkPos.getY() + ", " + subChunkPos.getZ() + " to " + player.getName());
                 }
-            } else if (debug >= 3) {
+            } else if (debug >= 2) {
                 console.warning(ChatColor.YELLOW + "Did not send a packet in the subchunk at " + subChunkPos.getX() + ", " + subChunkPos.getY() + ", " + subChunkPos.getZ() + " to " + player.getName() + " because it was empty");
             }
         } catch (InvocationTargetException e) {

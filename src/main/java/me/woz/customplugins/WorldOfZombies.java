@@ -18,6 +18,10 @@ import org.bukkit.ChatColor;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Set;
 import java.util.logging.Logger;
 
 public class WorldOfZombies extends JavaPlugin {
@@ -140,7 +144,7 @@ public class WorldOfZombies extends JavaPlugin {
     }
 
     //removes an empty file (or empty sections in the file if deep == true), and returns if the file was removed
-    public boolean removeEmpty(File file, boolean deep, int debug) {
+    public boolean removeEmpty(File file, boolean deep, Collection<String> ignore, int debug) {
         int removedSections = 0;
         boolean removedFile = false;
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
@@ -163,7 +167,12 @@ public class WorldOfZombies extends JavaPlugin {
             }
         }
 
-        if (yaml.getKeys(true).isEmpty()) {
+        Set<String> keys = yaml.getKeys(true);
+        if (ignore != null && !ignore.isEmpty()) {
+            keys.removeAll(ignore);
+        }
+
+        if (keys.isEmpty()) {
             try {
                 file.delete();
             } catch (Exception e) {

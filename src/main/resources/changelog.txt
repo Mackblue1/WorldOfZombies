@@ -1,5 +1,6 @@
 1.1.3     _/__/21
     New Features:
+        - Added a debug level 5 for messages that are extremely common will rarely be used for debugging (like a message saying a single block has been loaded)
         - Added the command  "/woz get [item id]"  which gives a player the item specified in the  "item"  section of the custom block's definition
             - The new permission  "worldofzombies.command.get"  has been added for this command
             - This command includes dynamic tab completion based on the active custom blocks from the most recent plugin reload
@@ -23,6 +24,8 @@
     Changes:
         - Changed structure of all logged blocks (blocks will not auto update)
             - Custom block id is now stored in the tag  "[location].id"  , and the latest disguised-data is stored in the tag  "[location].disguised-block"
+            - The new tag  "chunk-reload-id"  is how the plugin determines if it should recalculate blocks'  "[location].disguised-block"  when a chunk is loaded, so don't change it unless you want that data to be recalculated
+            - The new custom block config option  "recalculate-chunk-disguises-blacklist"  is a list of world names which will never recalculate block's  "[location].disguised-block"  , effectively ignoring the  "chunk-reload-id"  tag
         - Replaced the  "item"  ,  "nbt-item"  , and  "custom-item"  tags with a different format (check demo.yml for details)
             - MAKE SURE TO CHANGE THE ITEM FORMAT OR ITEM DROPS WILL NOT WORK
         - Replaced all "_" in block definition tags with "-"

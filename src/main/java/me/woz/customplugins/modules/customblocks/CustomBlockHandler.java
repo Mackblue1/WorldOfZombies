@@ -8,7 +8,6 @@ import com.comphenix.protocol.wrappers.WrappedBlockData;
 import de.tr7zw.nbtapi.NBTCompound;
 import de.tr7zw.nbtapi.NBTContainer;
 import de.tr7zw.nbtapi.NBTItem;
-import de.tr7zw.nbtapi.NbtApiException;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.util.MultiBlockChangeWrap;
 import org.apache.commons.io.FileUtils;
@@ -19,7 +18,6 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.v1_16_R3.util.CraftMagicNumbers;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
@@ -27,7 +25,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
@@ -61,7 +58,7 @@ public class CustomBlockHandler implements Listener {
         idToDefinitionFilePath = new HashMap<>();
         idToDefinitionFile = new HashMap<>();
 
-        reloadConfigs();
+        reload();
         chunkLoadListener();
         blockChangeListener();
         multiBlockChangeListener();
@@ -70,6 +67,7 @@ public class CustomBlockHandler implements Listener {
 
     //adds all the blocks in the file for a chunk to their respective MultiBlockChange packets based on subChunk section
     public int loadLoggedBlocksInChunk(Player player, Chunk chunk) {
+        boolean recalculateDisguises = true;
         int blockCount = 0;
         int chunkX = chunk.getX();
         int chunkZ = chunk.getZ();
@@ -90,7 +88,7 @@ public class CustomBlockHandler implements Listener {
             return 0;
         }
 
-        if (main.removeEmpty(file, true, debug)) {
+        if (main.removeEmpty(file, true, Arrays.asList("chunk-reload-id"), debug)) {
             if (debug >= 4) {
                 console.info(ChatColor.BLUE + "There are no custom blocks in the chunk at: " + chunkString + "   (removed empty file)");
             }
@@ -99,44 +97,83 @@ public class CustomBlockHandler implements Listener {
 
         Set<String> sections = logYaml.getKeys(false);
 
+        if (!recalculateChunkDisguisesBlacklist.contains(world.getName())) {
+            if (logYaml.contains("chunk-reload-id")) {
+                if (logYaml.getDouble("chunk-reload-id") != chunkReloadID) {
+                    //reload id is different, so disguised-block should be recalculated
+                    logYaml.set("chunk-reload-id", chunkReloadID);
+                } else {
+                    //reload id is the same, so disguised-block should not be recalculated
+                    recalculateDisguises = false;
+                }
+            } else {
+                logYaml.set("chunk-reload-id", chunkReloadID);
+            }
+        }
+
         //if a top level key is a ConfigurationSection (by default they all will be), get and use data from its keys
         for (String sectionString : sections) {
             if (logYaml.isConfigurationSection(sectionString)) {
-                ConfigurationSection configurationSection = logYaml.getConfigurationSection(sectionString);
-                Set<String> data = configurationSection.getKeys(false);
+                ConfigurationSection subChunkSection = logYaml.getConfigurationSection(sectionString);
                 int subChunkY = Integer.parseInt(sectionString.substring("subChunk".length()));
                 String subChunkString = world.getName() + ", " + chunkX + ", " + subChunkY + ", " + chunkZ;
 
-                if (!data.isEmpty()) {
+                Set<String> loggedBlocks = subChunkSection.getKeys(false);
+                if (!loggedBlocks.isEmpty()) {
                     MultiBlockChangeWrap packet = new MultiBlockChangeWrap(chunkX, subChunkY, chunkZ);
+                    
+                    //for each location in the subChunk, get (or recalculate and set) the child "disguised-data"
+                    for (String loggedLocationString : loggedBlocks) {
+                        if (subChunkSection.isConfigurationSection(loggedLocationString)) {
+                            ConfigurationSection locationSection = subChunkSection.getConfigurationSection(loggedLocationString);
+                            String[] locParts = loggedLocationString.split("_");
+                            if (locParts.length < 3) {
+                                console.severe(ChatColor.RED + "A custom block could not be loaded because the location key \"" + loggedLocationString + "\" in the subChunk at " + subChunkString + " is invalid");
+                                continue;
+                            }
 
-                    for (String key : data) {
-                        String[] locParts = key.split("_");
-                        if (locParts.length < 3) {
-                            console.severe(ChatColor.RED + "A custom block could not be loaded because the location key \"" + key + "\" in the subChunk at " + subChunkString + " is invalid");
-                            continue;
-                        }
+                            Location loc = new Location(world, Double.parseDouble(locParts[0]), Double.parseDouble(locParts[1]), Double.parseDouble(locParts[2]));
+                            String locString = world.getName() + ", " + locParts[0] + ", " + locParts[1] + ", " + locParts[2];
+                            String id = locationSection.getString("id");
 
-                        Location loc = new Location(Bukkit.getWorld(file.getParentFile().getName()), Double.parseDouble(locParts[0]), Double.parseDouble(locParts[1]), Double.parseDouble(locParts[2]));
-                        String locString = locParts[0] + ", " + locParts[1] + ", " + locParts[2];
-                        String id = logYaml.getString(sectionString + "." + key);
-
-                        BlockData disguisedData = createSyncedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, true);
-
-                        if (disguisedData == null) {
-                            continue;
-                        }
-
-                        if (disguisedData.getMaterial().equals(Material.AIR)) {
-                                if (debug >= 3) {
-                                    console.warning(ChatColor.YELLOW + "Did not load the \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
+                            BlockData disguisedData;
+                            if (recalculateDisguises) {
+                                disguisedData = createSyncedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, true);
+                                locationSection.set("disguised-block", disguisedData.getAsString());
+                                if (debug >= 4) {
+                                    console.info(ChatColor.BLUE + "The \"disguised-block\" for the block at " + locString + " was recalculated because the logged and plugin's chunk reload ID did not match or because this world is included in the \"recalculate-chunk-disguises-blacklist\"");
                                 }
-                        } else {
-                            packet.addBlock(loc, disguisedData);
-                            blockCount++;
+                            } else {
+                                String disguisedBlockString = locationSection.getString("disguised-block");
+                                try {
+                                    disguisedData = Bukkit.createBlockData(disguisedBlockString);
+                                    if (debug >= 4) {
+                                        console.info(ChatColor.BLUE + "The disguised BlockData for the block at " + locString + " was taken directly from the logged \"disguised-block\" because the logged and plugin's chunk reload ID matched");
+                                    }
+                                } catch (IllegalArgumentException e) {
+                                    disguisedData = createSyncedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, true);
+                                    if (debug >= 3) {
+                                        console.warning(ChatColor.YELLOW + "The \"disguised-block\" for the block at " + locString + " was invalid or null, so it was recalculated");
+                                    }
+                                }
+                            }
 
-                            if (debug >= 4) {
-                                console.info(ChatColor.BLUE + "Loaded the \"" + id + "\" at " + locString + " in the subChunk at " + subChunkString + " by " + player.getName());
+                            if (disguisedData == null) {
+                                //no error message because error messages are handled in createBlockData()
+                                continue;
+                            }
+
+                            if (disguisedData.getMaterial().equals(Material.AIR)) {
+                                if (debug >= 4) {
+                                    console.warning(ChatColor.YELLOW + "(THIS CAN PROBABLY BE IGNORED IF THIS IS DURING A CHUNK BEING LOADED) Did not load the \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
+                                }
+                            } else {
+                                packet.addBlock(loc, disguisedData);
+                                blockCount++;
+
+                                if (debug >= 5) {
+                                    console.info(ChatColor.GRAY + "Loaded the \"" + id + "\" at " + locString + " in the subChunk at " + subChunkString + " by " + player.getName());
+                                }
                             }
                         }
                     }
@@ -145,13 +182,19 @@ public class CustomBlockHandler implements Listener {
             }
         }
 
+        try {
+            logYaml.save(file);
+        } catch (IOException e) {
+            console.severe(ChatColor.RED + "Could not save the file for the chunk at " + chunkString);
+        }
+
         return blockCount;
     }
 
     //wrapper method for destroying a custom block: un-logs the block, drops custom items, plays custom break sound, and spawns custom break particles
     public void destroyCustomBlock(Location loc, boolean dropItems, Player player, List<Item> originalDrops) {
         Block block = loc.getWorld().getBlockAt(loc);
-        String id = getLoggedStringFromLocation(loc);
+        String id = getLoggedStringFromLocation(loc, "id");
 
         if (id != null) {
             if (!block.getType().isEmpty()) {
@@ -234,8 +277,8 @@ public class CustomBlockHandler implements Listener {
         }
     }
 
-    //gets the logged string for a location
-    public String getLoggedStringFromLocation(Location loc) {
+    //gets a logged string from a location
+    public String getLoggedStringFromLocation(Location loc, String path) {
         World world = loc.getWorld();
         int x = loc.getBlockX();
         int y = loc.getBlockY();
@@ -247,12 +290,33 @@ public class CustomBlockHandler implements Listener {
         File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunkX + "." + chunkZ + ".yml");
         YamlConfiguration yaml = main.loadYamlFromFile(file, false, false, debug, "");
 
-        String logPath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
+        String basePath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
         //String locString = world.getName() + ", " + x + ", " + y + ", " + z;
-        if (yaml != null && yaml.contains(logPath)) {
-            return yaml.getString(logPath);
+        if (yaml != null && yaml.contains(basePath + "." + path)) {
+            return yaml.getString(basePath + "." + path);
         }
         return null;
+    }
+
+    //sets a value in a log file from a location
+    public void setLoggedInfoAtLocation(Location loc, String path, Object value) {
+        World world = loc.getWorld();
+        int x = loc.getBlockX();
+        int y = loc.getBlockY();
+        int z = loc.getBlockZ();
+        int chunkX = x >> 4;
+        int chunkZ = z >> 4;
+        int subChunkY = y >> 4;
+        String chunkString = world.getName() + ", " + chunkX + ", " + chunkZ;
+
+        File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunkX + "." + chunkZ + ".yml");
+        YamlConfiguration yaml = main.loadYamlFromFile(file, false, false, debug, "");
+        yaml.set("subChunk" + subChunkY + "." + x + "_" + y + "_" + z + "." + path, value);
+        try {
+            yaml.save(file);
+        } catch (IOException e) {
+            console.severe(ChatColor.RED + "Could not save the file for the chunk at " + chunkString);
+        }
     }
 
     //gets the BlockData logged in "disguised-data" for a location
@@ -290,7 +354,7 @@ public class CustomBlockHandler implements Listener {
         if (file.exists()) {
             YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
             String path = "subChunk" + (loc.getBlockY() >> 4) + "." + loc.getBlockX() + "_" + loc.getBlockY() + "_" + loc.getBlockZ();
-            String id = yaml.getString(path);
+            String id = yaml.getString(path + ".id");
 
             if (yaml.contains(path)) {
                 yaml.set(path, null);
@@ -380,29 +444,6 @@ public class CustomBlockHandler implements Listener {
                                 xpToDrop *= dropSection.getDouble("multiply-xp");
                             }
 
-                            /*ItemStack item;
-                            if (dropSection.contains("nbt-item")) {
-                                item = NBTItem.convertNBTtoItem(new NBTContainer(dropSection.getString("nbt-item")));
-                            } else if (dropSection.contains("custom-item")) {
-                                Material material = Material.valueOf(dropSection.getString("item").toUpperCase());
-                                item = new ItemStack(material);
-                            } else {
-                                console.warning(ChatColor.YELLOW + "No item is specified for the custom block \"" + id + "\" in the drop section \"" + drop + "\" in the file " + path);
-                                continue;
-                            }
-
-                            int count = 1;
-                            if (dropSection.contains("count")) {
-                                count = dropSection.getInt("count");
-                            } else if (dropSection.contains("min") && dropSection.contains("max")) {
-                                int max = dropSection.getInt("max");
-                                int min = dropSection.getInt("min");
-                                count = (int) (Math.random() * (max - min + 1) + min);
-                            }
-                            item.setAmount(count);
-
-                            newDrops.add(item);*/
-
                             Set<String> keys = dropSection.getKeys(false);
                             //children of a main drop section, includes keys like "chance", "conditions", and items
                             for (String key : keys) {
@@ -457,51 +498,6 @@ public class CustomBlockHandler implements Listener {
                                         }
                                         item.setAmount(count);
                                     }
-
-                                    /*if (itemSection.contains("nbt-item")) {
-                                        String nbtString = itemSection.getString("nbt-item");
-                                        Object value = itemSection.get("count");
-                                        int count = 1;
-
-                                        if (value instanceof Integer) {
-                                            count = (Integer) value;
-                                        } else if (value instanceof String && ((String) value).contains("-") && ((String) value).length() >= 3) {
-                                            String[] range = ((String) value).split("-");
-                                            int min = Integer.parseInt(range[0]);
-                                            int max = Integer.parseInt(range[1]);
-                                            count = (int) (Math.random() * (max - min + 1) + min);
-                                        }
-
-                                        try {
-                                            ItemStack item = NBTItem.convertNBTtoItem(new NBTContainer(nbtString));
-                                            item.setAmount(count);
-                                            newDrops.add(item);
-                                        } catch (NbtApiException e) {
-                                            console.severe(ChatColor.RED + "The NBT string in the item section \"" + key + "\" in the drop section \"" + drop + "\" of the custom block \"" + id + "\"");
-                                        }
-
-                                    } else if (itemSection.contains("custom-item")) {
-                                        String customItemID = itemSection.getString("custom-item");
-                                        Object value = itemSection.get("count");
-                                        int count = 1;
-
-                                        if (value instanceof Integer) {
-                                            count = (Integer) value;
-                                        } else if (value instanceof String && ((String) value).contains("-") && ((String) value).length() >= 3) {
-                                            String[] range = ((String) value).split("-");
-                                            int min = Integer.parseInt(range[0]);
-                                            int max = Integer.parseInt(range[1]);
-                                            count = (int) (Math.random() * (max - min + 1) + min);
-                                        }
-
-                                        try {
-                                            ItemStack item = getItemFromID(customItemID);
-                                            item.setAmount(count);
-                                            newDrops.add(item);
-                                        } catch (NbtApiException | NullPointerException e) {
-                                            console.severe(ChatColor.RED + "The \"item\" tag for the custom block \"" + customItemID + "\" is invalid or null");
-                                        }
-                                    }*/
 
                                 } else {
                                     //vanilla item without NBT:   [material]: [count]
@@ -571,12 +567,12 @@ public class CustomBlockHandler implements Listener {
         YamlConfiguration yaml = main.loadYamlFromFile(file, false, false, debug, "");
 
         String logPath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
-        if (yaml != null && yaml.contains(logPath)) {
-            String id = getLoggedStringFromLocation(loc);
+        if (yaml != null && yaml.isConfigurationSection(logPath)) {
+            Map<String, Object> values = yaml.getValues(true);
             yaml.set(logPath, null);
 
             String newLogPath = "subChunk" + subChunkY + "." + newLoc.getBlockX() + "_" + newLoc.getBlockY() + "_" + newLoc.getBlockZ();
-            yaml.set(newLogPath, id);
+            yaml.createSection(newLogPath, values);
             try {
                 yaml.save(file);
             } catch (IOException e) {
@@ -591,7 +587,7 @@ public class CustomBlockHandler implements Listener {
         Map<Location, Location> moves = new HashMap<>();
         if (!blocks.isEmpty()) {
             for (Block block : blocks) {
-                String id = getLoggedStringFromLocation(block.getLocation());
+                String id = getLoggedStringFromLocation(block.getLocation(), "id");
                 if (id != null) {
                     YamlConfiguration yaml = idToDefinitionFile.get(id);
                     Location loc = block.getLocation();
@@ -679,7 +675,7 @@ public class CustomBlockHandler implements Listener {
         int x = block.getX();
         int y = block.getY();
         int z = block.getZ();
-        String path = "subChunk" + (block.getY() >> 4) + "." + x + "_" + y + "_" + z;
+        String path = "subChunk" + (block.getY() >> 4) + "." + x + "_" + y + "_" + z + "." + "id";
         String chunkString = world.getName() + ", " + chunk.getX() + ", " + chunk.getZ();
         String locString = world.getName() + ", " + x + ", " + y + ", " + z;
 
@@ -703,12 +699,6 @@ public class CustomBlockHandler implements Listener {
             YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
             if (yaml == null) {
                 return;
-            }
-
-            if (yaml.contains("chunk-reload-id")) {
-                if (yaml.getDouble("chunk-reload-id") != chunkReloadID) {
-                    yaml.set("chunk-reload-id", 1);
-                }
             }
 
             if (!yaml.contains(path)) {
@@ -743,7 +733,7 @@ public class CustomBlockHandler implements Listener {
     //cancels any xp that would normally drop from a custom block being broken (like an ore block)
     @EventHandler
     public void blockDropXpEvent(BlockExpEvent event) {
-        String id = getLoggedStringFromLocation(event.getBlock().getLocation());
+        String id = getLoggedStringFromLocation(event.getBlock().getLocation(), "id");
         if (event.getExpToDrop() != 0 && id != null) {
             YamlConfiguration yaml = idToDefinitionFile.get(id);
             if (yaml != null && yaml.getBoolean(id + ".block.drops.enabled", true) && yaml.getBoolean(id + ".block.drops.cancel-xp")) {
@@ -772,7 +762,7 @@ public class CustomBlockHandler implements Listener {
         while (blocks.iterator().hasNext()) {
             Block block = blocks.iterator().next();
             Location loc = block.getLocation();
-            String id = getLoggedStringFromLocation(loc);
+            String id = getLoggedStringFromLocation(loc, "id");
 
             if (id != null) {
                 blocks.remove(block);
@@ -859,7 +849,7 @@ public class CustomBlockHandler implements Listener {
 
                         //console.info(ChatColor.GOLD + "BC:  " + position + "   " + wrappedBlockData.getType() + "     " + block.getBlockData().getMaterial());
 
-                        String id = getLoggedStringFromLocation(loc);
+                        String id = getLoggedStringFromLocation(loc, "id");
                         if (id != null) {
                             if (wrappedBlockData.equals(WrappedBlockData.createData(block.getBlockData()))) {
                                 BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
@@ -870,14 +860,18 @@ public class CustomBlockHandler implements Listener {
                                         }
                                     } else {
                                         packet.getBlockData().write(0, WrappedBlockData.createData(disguisedData));
+                                        String blockDataString = getLoggedStringFromLocation(loc, "disguised-block");
+                                        if (!disguisedData.getAsString().equals(blockDataString)) {
+                                            setLoggedInfoAtLocation(loc, "disguised-block", disguisedData.getAsString());
+                                        }
 
                                         if (debug >= 4) {
                                             console.info(ChatColor.AQUA + "Edited the BlockData in an outgoing BlockChange packet for the custom block \"" + id + "\" at " + locString + " by " + player.getName());
                                         }
                                     }
                                 }
-                            } else if (debug >= 3) {
-                                console.warning(ChatColor.YELLOW + "Did not load the \"disguised-data\" for the \"" + id + "\" at " + locString + " because the BlockData in a BlockChange packet for that location does not match the BlockData of the real block");
+                            } else if (debug >= 4) {
+                                console.warning(ChatColor.YELLOW + "(THIS CAN PROBABLY BE IGNORED IF THIS IS DURING A CHUNK BEING LOADED) Did not load the \"disguised-data\" for the \"" + id + "\" at " + locString + " because the BlockData in a BlockChange packet for that location does not match the BlockData of the real block");
                             }
                         }
                     }
@@ -910,8 +904,9 @@ public class CustomBlockHandler implements Listener {
                             Location loc = new Location(world, absoluteX, absoluteY, absoluteZ);
                             Block block = world.getBlockAt(loc);
                             String locString = world.getName() + ", " + absoluteX + ", " + absoluteY + ", " + absoluteZ;
+                            //console.info(ChatColor.GOLD + "MBC:  " + loc + "   packet:" + blockDataArr[i].getType() + "     real:" + block.getBlockData().getMaterial());
 
-                            String id = getLoggedStringFromLocation(loc);
+                            String id = getLoggedStringFromLocation(loc, "id");
                             if (id != null) {
                                 if (blockDataArr[i].equals(WrappedBlockData.createData(block.getBlockData()))) {
                                     BlockData disguisedData = getDisguisedBlockDataFromLocation(loc, id);
@@ -922,14 +917,18 @@ public class CustomBlockHandler implements Listener {
                                             }
                                         } else {
                                             blockDataArr[i] = WrappedBlockData.createData(disguisedData);
+                                            String blockDataString = getLoggedStringFromLocation(loc, "disguised-block");
+                                            if (!disguisedData.getAsString().equals(blockDataString)) {
+                                                setLoggedInfoAtLocation(loc, "disguised-block", disguisedData.getAsString());
+                                            }
 
                                             if (debug >= 4) {
                                                 console.info(ChatColor.AQUA + "Edited the BlockData for the custom block \"" + id + "\" at " + locString + " in a MultiBlockChange packet by " + player.getName());
                                             }
                                         }
                                     }
-                                } else if (debug >= 3) {
-                                    console.warning(ChatColor.YELLOW + "Did not load the \"disguised-data\" for the \"" + id + "\" at " + locString + " because the BlockData in a MultiBlockChange packet for that location does not match the BlockData of the real block");
+                                } else if (debug >= 4) {
+                                    console.warning(ChatColor.YELLOW + "(THIS CAN PROBABLY BE IGNORED IF THIS IS DURING A CHUNK BEING LOADED) Did not load the \"disguised-data\" for the \"" + id + "\" at " + locString + " because the BlockData in a MultiBlockChange packet for that location does not match the BlockData of the real block");
                                 }
                             }
                         }
@@ -944,7 +943,7 @@ public class CustomBlockHandler implements Listener {
     }
 
     //reloads the main and custom block configs, the custom block definition files, and the debug field
-    public void reloadConfigs() {
+    public void reload() {
         main.createConfigs();
         config = main.getConfig();
         customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-block.yml"), false, false, debug, "");
