@@ -1,7 +1,7 @@
 package me.woz.customplugins.commands;
 
 import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
+import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
@@ -19,18 +19,18 @@ public class SCommandTab implements TabCompleter {
      */
 
     private final WorldOfZombies main;
-    private final CustomBlockHandler customBlockHandler;
+    private final CustomBlockEvents customBlockEvents;
 
     private List<String> customItems;
 
-    public SCommandTab(WorldOfZombies main, CustomBlockHandler customBlockHandler) {
+    public SCommandTab(WorldOfZombies main, CustomBlockEvents customBlockEvents) {
         this.main = main;
-        this.customBlockHandler = customBlockHandler;
+        this.customBlockEvents = customBlockEvents;
         reloadCompletions();
     }
 
     public void reloadCompletions() {
-        customItems = new ArrayList<>(customBlockHandler.getIdToDefinitionFile().keySet());
+        customItems = new ArrayList<>(customBlockEvents.getIdToDefinitionFile().keySet());
     }
 
     //handles tab completion based on the length of the currently typed arguments

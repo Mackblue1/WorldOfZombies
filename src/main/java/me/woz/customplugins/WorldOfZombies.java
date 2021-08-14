@@ -8,7 +8,7 @@ import me.woz.customplugins.commands.TestCommand;
 import me.woz.customplugins.commands.woz.BlockDatabaseCommands;
 import me.woz.customplugins.commands.woz.GetCustomItemCommand;
 import me.woz.customplugins.commands.SCommandTab;
-import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
+import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -18,9 +18,7 @@ import org.bukkit.ChatColor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -30,7 +28,7 @@ public class WorldOfZombies extends JavaPlugin {
     private ProtocolManager pm;
 
     private CommandHandler commandHandler;
-    private CustomBlockHandler customBlockHandler;
+    private CustomBlockEvents customBlockEvents;
     private SCommandTab sCommandTab;
     private GetCustomItemCommand getCustomItemCommand;
 
@@ -54,22 +52,22 @@ public class WorldOfZombies extends JavaPlugin {
         console.info("_______________________________________________________");
 
         if (config.getBoolean("Modules.custom-blocks")) {
-            customBlockHandler = new CustomBlockHandler(this, pm);
-            getServer().getPluginManager().registerEvents(customBlockHandler, this);
+            customBlockEvents = new CustomBlockEvents(this, pm);
+            getServer().getPluginManager().registerEvents(customBlockEvents, this);
 
             BlockDatabaseCommands blockDatabaseCommands = new BlockDatabaseCommands(this);
             commandHandler.registerMultiArgCommand(blockDatabaseCommands, "", "Confirms a previous database command", "database", "confirm");
             commandHandler.registerMultiArgCommand(blockDatabaseCommands, " [world]", "Deletes the custom block database for a world", "database", "delete");
             commandHandler.registerMultiArgCommand(blockDatabaseCommands, " [world1] [world2]", "Clones the database from  world1  to  world2", "database", "clone");
 
-            getCustomItemCommand = new GetCustomItemCommand(this, customBlockHandler);
+            getCustomItemCommand = new GetCustomItemCommand(this, customBlockEvents);
             commandHandler.registerCommand("get", getCustomItemCommand, " [id] (amount)", "Gives the player the item specified in a custom block's \"item\" definition tag");
         }
 
-        sCommandTab = new SCommandTab(this, customBlockHandler);
-        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockHandler, sCommandTab, getCustomItemCommand));
+        sCommandTab = new SCommandTab(this, customBlockEvents);
+        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockEvents, sCommandTab, getCustomItemCommand));
         getCommand("worldofzombies").setTabCompleter(sCommandTab);
-        getCommand("woztest").setExecutor(new TestCommand(this, pm, customBlockHandler));
+        getCommand("woztest").setExecutor(new TestCommand(this, pm, customBlockEvents));
 
         console.info(ChatColor.GREEN + "World of Zombies custom plugin loaded successfully!");
         console.info("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾");

@@ -3,7 +3,7 @@ package me.woz.customplugins.commands.woz;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.commands.SCommandTab;
 import me.woz.customplugins.commands.SubCommand;
-import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
+import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -14,14 +14,14 @@ import java.util.logging.Logger;
 public class ReloadCommand implements SubCommand {
 
     private final WorldOfZombies main;
-    private final CustomBlockHandler customBlockHandler;
+    private final CustomBlockEvents customBlockEvents;
     private final GetCustomItemCommand getCustomItemCommand;
     private final SCommandTab sCommandTab;
     private final Logger console;
 
-    public ReloadCommand(WorldOfZombies main, CustomBlockHandler customBlockHandler, GetCustomItemCommand getCustomItemCommand, SCommandTab sCommandTab) {
+    public ReloadCommand(WorldOfZombies main, CustomBlockEvents customBlockEvents, GetCustomItemCommand getCustomItemCommand, SCommandTab sCommandTab) {
         this.main = main;
-        this.customBlockHandler = customBlockHandler;
+        this.customBlockEvents = customBlockEvents;
         this.getCustomItemCommand = getCustomItemCommand;
         this.sCommandTab = sCommandTab;
         console = main.getLogger();
@@ -33,8 +33,8 @@ public class ReloadCommand implements SubCommand {
 
             main.reloadConfig();
             main.createConfigs();
-            if (customBlockHandler != null) {
-                customBlockHandler.reload();
+            if (customBlockEvents != null) {
+                customBlockEvents.reload();
             } else {
                 console.info(ChatColor.AQUA + "The custom block config was not reloaded because the custom blocks module is disabled");
             }

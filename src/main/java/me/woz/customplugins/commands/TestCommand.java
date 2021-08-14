@@ -6,13 +6,10 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import com.destroystokyo.paper.entity.ai.*;
-import de.tr7zw.nbtapi.NBTCompound;
-import de.tr7zw.nbtapi.NBTItem;
 import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
+import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -33,13 +30,13 @@ public class TestCommand implements CommandExecutor {
     private final WorldOfZombies main;
     private final Logger console;
     private final ProtocolManager pm;
-    private final CustomBlockHandler customBlockHandler;
+    private final CustomBlockEvents customBlockEvents;
 
-    public TestCommand(WorldOfZombies main, ProtocolManager pm, CustomBlockHandler handler) {
+    public TestCommand(WorldOfZombies main, ProtocolManager pm, CustomBlockEvents handler) {
         this.main = main;
         this.console = main.getLogger();
         this.pm = pm;
-        this.customBlockHandler = handler;
+        this.customBlockEvents = handler;
     }
 
     @Override

@@ -4,7 +4,7 @@ import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.commands.woz.ItemCommand;
 import me.woz.customplugins.commands.woz.ReloadCommand;
 import me.woz.customplugins.commands.woz.GetCustomItemCommand;
-import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
+import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -32,7 +32,7 @@ public class SCommand implements CommandExecutor {
     private final InfoCommand info;
 
     //registers specific subCommands using CommandHandler
-    public SCommand(WorldOfZombies main, CommandHandler commandHandler, CustomBlockHandler customBlockHandler, SCommandTab sCommandTab, GetCustomItemCommand getCustomItemCommand) {
+    public SCommand(WorldOfZombies main, CommandHandler commandHandler, CustomBlockEvents customBlockEvents, SCommandTab sCommandTab, GetCustomItemCommand getCustomItemCommand) {
         this.main = main;
         this.commandHandler = commandHandler;
         config = main.getConfig();
@@ -41,7 +41,7 @@ public class SCommand implements CommandExecutor {
         info = new InfoCommand(main, config, commandHandler);
 
         commandHandler.registerCommand("info", info, "", "Displays information about this plugin");
-        commandHandler.registerCommand("reload", new ReloadCommand(main, customBlockHandler, getCustomItemCommand, sCommandTab), "", "Reloads the plugin's config files");
+        commandHandler.registerCommand("reload", new ReloadCommand(main, customBlockEvents, getCustomItemCommand, sCommandTab), "", "Reloads the plugin's config files");
         commandHandler.registerMultiArgCommand(new ItemCommand(main), " (-yaml)", "Sends the player the NBT API string for the item in their main hand", "item", "nbt");
     }
 

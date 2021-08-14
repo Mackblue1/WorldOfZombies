@@ -3,7 +3,7 @@ package me.woz.customplugins.commands.woz;
 import de.tr7zw.nbtapi.NbtApiException;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.commands.SubCommand;
-import me.woz.customplugins.modules.customblocks.CustomBlockHandler;
+import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -16,27 +16,27 @@ import java.util.logging.Logger;
 public class GetCustomItemCommand implements SubCommand {
     
     private final WorldOfZombies main;
-    private final CustomBlockHandler customBlockHandler;
+    private final CustomBlockEvents customBlockEvents;
     private final Logger console;
 
     private Set<String> itemStrings;
 
-    public GetCustomItemCommand(WorldOfZombies main, CustomBlockHandler customBlockHandler) {
+    public GetCustomItemCommand(WorldOfZombies main, CustomBlockEvents customBlockEvents) {
         this.main = main;
-        this.customBlockHandler = customBlockHandler;
+        this.customBlockEvents = customBlockEvents;
         console = main.getLogger();
-        itemStrings = customBlockHandler.getIdToDefinitionFile().keySet();
+        itemStrings = customBlockEvents.getIdToDefinitionFile().keySet();
     }
 
     public void reloadItems() {
-        itemStrings = customBlockHandler.getIdToDefinitionFile().keySet();
+        itemStrings = customBlockEvents.getIdToDefinitionFile().keySet();
     }
 
     @Override
     public boolean subCommand(CommandSender sender, Command cmd, String alias, String[] args) {
         if (sender.hasPermission("worldofzombies.command.get")) {
             if (sender instanceof Player) {
-                if (customBlockHandler != null) {
+                if (customBlockEvents != null) {
                     if (args.length == 0) {
                         throw new IllegalArgumentException("Invalid command");
                     }
@@ -45,7 +45,7 @@ public class GetCustomItemCommand implements SubCommand {
                     if (itemStrings.contains(id)) {
                         ItemStack item;
                         try {
-                            item = customBlockHandler.getItemFromID(id);
+                            item = customBlockEvents.getCustomBlockHelper().getItemFromID(id);
                             if (args.length >= 2) {
                                 try {
                                     int count = Integer.parseInt(args[1]);
