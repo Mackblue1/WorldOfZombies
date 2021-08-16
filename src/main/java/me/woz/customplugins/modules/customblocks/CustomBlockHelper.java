@@ -1,12 +1,10 @@
 package me.woz.customplugins.modules.customblocks;
 
-import com.comphenix.protocol.ProtocolManager;
 import de.tr7zw.nbtapi.NBTCompound;
 import de.tr7zw.nbtapi.NBTContainer;
 import de.tr7zw.nbtapi.NBTItem;
 import me.woz.customplugins.WorldOfZombies;
 import me.woz.customplugins.util.MultiBlockChangeWrap;
-import org.apache.commons.io.FileUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -134,7 +132,7 @@ public class CustomBlockHelper {
 
                             BlockData disguisedData;
                             if (recalculateDisguises) {
-                                disguisedData = createSyncedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, true);
+                                disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id);
                                 locationSection.set("disguised-block", disguisedData.getAsString());
                                 if (debug >= 4) {
                                     console.info(ChatColor.BLUE + "The \"disguised-block\" for the block at " + locString + " was recalculated because the logged and plugin's chunk reload ID did not match or because this world is included in the \"recalculate-chunk-disguises-blacklist\"");
@@ -147,7 +145,7 @@ public class CustomBlockHelper {
                                         console.info(ChatColor.BLUE + "The disguised BlockData for the block at " + locString + " was taken directly from the logged \"disguised-block\" because the logged and plugin's chunk reload ID matched");
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    disguisedData = createSyncedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, true);
+                                    disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id);
                                     if (debug >= 3) {
                                         console.warning(ChatColor.YELLOW + "The \"disguised-block\" for the block at " + locString + " was invalid or null, so it was recalculated");
                                     }
@@ -185,6 +183,17 @@ public class CustomBlockHelper {
         }
 
         return blockCount;
+    }
+
+    //wrapper method for calculating a custom block's disguised BlockData, including sync-states and match-states
+    public BlockData createCustomDisguisedBlockData(String originalBlockDataString, String id) {
+        BlockData syncedData = createSyncedBlockData(originalBlockDataString, id, true);
+        BlockData matchedData = checkMatchStates(syncedData.getAsString(), id);
+
+        if (matchedData != null) {
+            return matchedData;
+        }
+        return syncedData;
     }
 
     //wrapper method for destroying a custom block: un-logs the block, drops custom items, plays custom break sound, and spawns custom break particles
@@ -273,6 +282,63 @@ public class CustomBlockHelper {
         }
     }
 
+    //checks the match-states section and returns null if no conditions are met or the disguised-block inside the first matching state section
+    public BlockData checkMatchStates(String originalBlockDataString, String id) {
+        YamlConfiguration yaml = idToDefinitionFile.get(id);
+        if (yaml.isConfigurationSection(id + ".block.match-states")) {
+            ConfigurationSection matchStatesSection = yaml.getConfigurationSection(id + ".block.match-states");
+            Set<String> states = matchStatesSection.getKeys(false);
+
+            for (String state : states) {
+                if (matchStatesSection.isConfigurationSection(state)) {
+                    BlockData data = checkMatchStatesSection(originalBlockDataString, matchStatesSection.getConfigurationSection(state));
+                    if (data != null) {
+                        return data;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    //recursive element of checkMatchStates to actually check the states
+    public BlockData checkMatchStatesSection(String originalBlockDataString, ConfigurationSection section) {
+        if (section.contains("state")) {
+            String matchKey = section.getName();
+            String matchValue = section.get("state").toString();
+
+            if (originalBlockDataString.contains(matchKey)) {
+                String afterState = originalBlockDataString.substring(originalBlockDataString.indexOf(matchKey));
+                int stateEnd = afterState.indexOf("]");
+                if (afterState.contains(",")) {
+                    if (afterState.indexOf(",") < stateEnd) {
+                        stateEnd = afterState.indexOf(",");
+                    }
+                }
+
+                String value = afterState.substring((matchKey + "=").length(), stateEnd);
+
+                if (value.equals(matchValue)) {
+                    if (section.contains("disguised-block")) {
+                        return Bukkit.createBlockData(section.getString("disguised-block"));
+                    } else {
+                        for (String state : section.getKeys(false)) {
+                            if (section.isConfigurationSection(state)) {
+                                BlockData data = checkMatchStatesSection(originalBlockDataString, section.getConfigurationSection(state));
+                                if (data != null) {
+                                    return data;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     //gets a logged string from a location
     public String getLoggedStringFromLocation(Location loc, String path) {
         World world = loc.getWorld();
@@ -315,18 +381,14 @@ public class CustomBlockHelper {
         }
     }
 
-    //gets the BlockData logged in "disguised-data" for a location
-    public BlockData getDisguisedBlockDataFromLocation(Location loc, String id) {
-        World world = loc.getWorld();
-        int x = loc.getBlockX();
-        int y = loc.getBlockY();
-        int z = loc.getBlockZ();
-        Block block = world.getBlockAt(loc);
+    //un-logs a block if the block is air, or returns the newly created disguised BlockData for a block
+    public BlockData unLogBlockOrCreateDisguisedBlockData(Location loc, String id) {
+        Block block = loc.getWorld().getBlockAt(loc);
 
         if (block.getType().isEmpty()) {
-            unlogBlock(new Location(world, x, y, z), null);
+            unlogBlock(loc, null);
         } else {
-            BlockData data = createSyncedBlockData(block.getBlockData().getAsString(), id, true);
+            BlockData data = createCustomDisguisedBlockData(block.getBlockData().getAsString(), id);
 
             if (data == null) {
                 return null;

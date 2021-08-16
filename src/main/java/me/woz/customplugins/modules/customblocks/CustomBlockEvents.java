@@ -256,7 +256,7 @@ public class CustomBlockEvents implements Listener {
                         String id = helper.getLoggedStringFromLocation(loc, "id");
                         if (id != null) {
                             if (wrappedBlockData.equals(WrappedBlockData.createData(block.getBlockData()))) {
-                                BlockData disguisedData = helper.getDisguisedBlockDataFromLocation(loc, id);
+                                BlockData disguisedData = helper.unLogBlockOrCreateDisguisedBlockData(loc, id);
                                 if (disguisedData != null) {
                                     if (disguisedData.getMaterial() == Material.AIR) {
                                         if (debug >= 3){
@@ -299,6 +299,7 @@ public class CustomBlockEvents implements Listener {
                         int offsetX = (subChunkPos.getX() << 4);
                         int offsetY = (subChunkPos.getY() << 4);
                         int offsetZ = (subChunkPos.getZ() << 4);
+                        int blocks = 0;
 
                         for (int i = 0; i < shortsArr.length; i++) {
                             short location = shortsArr[i];
@@ -313,7 +314,7 @@ public class CustomBlockEvents implements Listener {
                             String id = helper.getLoggedStringFromLocation(loc, "id");
                             if (id != null) {
                                 if (blockDataArr[i].equals(WrappedBlockData.createData(block.getBlockData()))) {
-                                    BlockData disguisedData = helper.getDisguisedBlockDataFromLocation(loc, id);
+                                    BlockData disguisedData = helper.unLogBlockOrCreateDisguisedBlockData(loc, id);
                                     if (disguisedData != null) {
                                         if (disguisedData.getMaterial() == Material.AIR) {
                                             if (debug >= 3) {
@@ -321,6 +322,7 @@ public class CustomBlockEvents implements Listener {
                                             }
                                         } else {
                                             blockDataArr[i] = WrappedBlockData.createData(disguisedData);
+                                            blocks++;
                                             String blockDataString = helper.getLoggedStringFromLocation(loc, "disguised-block");
                                             if (!disguisedData.getAsString().equals(blockDataString)) {
                                                 helper.setLoggedInfoAtLocation(loc, "disguised-block", disguisedData.getAsString());
@@ -338,8 +340,8 @@ public class CustomBlockEvents implements Listener {
                         }
 
                         packet.getBlockDataArrays().writeSafely(0, blockDataArr);
-                        if (debug >= 1 && shortsArr.length != 0) {
-                            console.info(ChatColor.DARK_GREEN + "Edited the BlockData of " + shortsArr.length + " blocks in a MultiBlockChange packet in the chunk at " + subChunkPos.getX() + ", " + subChunkPos.getZ() + " by " + player.getName());
+                        if (debug >= 1 && blocks != 0) {
+                            console.info(ChatColor.DARK_GREEN + "Edited the BlockData of " + blocks + " blocks in a MultiBlockChange packet in the chunk at " + subChunkPos.getX() + ", " + subChunkPos.getZ() + " by " + player.getName());
                         }
                     }
                 }
