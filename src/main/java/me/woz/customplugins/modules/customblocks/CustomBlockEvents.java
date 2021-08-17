@@ -62,8 +62,6 @@ public class CustomBlockEvents implements Listener {
         multiBlockChangeListener();
     }
 
-
-
     //when a player places a block, log the location and disguised-block, and set the server block to actual-data if it exists in the definition
     @EventHandler(priority = EventPriority.HIGHEST)
     public void blockPlaceEvent(BlockPlaceEvent event) {
@@ -134,6 +132,11 @@ public class CustomBlockEvents implements Listener {
         }
     }
 
+    /*@EventHandler(priority = EventPriority.HIGHEST)
+    public void multiBlockPlaceEvent(BlockMultiPlaceEvent event) {
+
+    }*/
+
     //cancels any xp that would normally drop from a custom block being broken (like an ore block)
     @EventHandler
     public void blockDropXpEvent(BlockExpEvent event) {
@@ -154,7 +157,7 @@ public class CustomBlockEvents implements Listener {
         Location loc = event.getBlock().getLocation();
         List<Item> originalDrops = event.getItems();
 
-        helper.destroyCustomBlock(loc, player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty(), player, originalDrops);
+        helper.destroyLoggedBlock(loc, player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty(), player, originalDrops);
     }
 
     //handles custom block drops during explosions
@@ -175,7 +178,7 @@ public class CustomBlockEvents implements Listener {
                     //removing block from explosion and setting to air works, but is there a better way to remove original exploded block drops?
 
                     if (yield > 0) {
-                        helper.destroyCustomBlock(loc, Math.random() < yield, null, null);
+                        helper.destroyLoggedBlock(loc, Math.random() < yield, null, null);
                     }
                 }
             }

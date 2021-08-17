@@ -9,7 +9,8 @@
 
     <groupId>me.woz.customplugins</groupId>
     <artifactId>WorldOfZombies</artifactId>
-    <version>1.1.3</version> <!-- LATEST ADDITION: piston event handling, MBC packet listener, "get" and "item nbt" commands -->
+    <version>1.1.3</version>
+    <!-- LATEST ADDITIONS: MBC packet listener, piston push/pull handler, match-states definition option, logged blocks are CS with recalculating disguised BlockData on chunk load, "/woz item nbt" and "/woz get" commands -->
 
     <build>
         <plugins>

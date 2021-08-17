@@ -187,17 +187,16 @@ public class CustomBlockHelper {
 
     //wrapper method for calculating a custom block's disguised BlockData, including sync-states and match-states
     public BlockData createCustomDisguisedBlockData(String originalBlockDataString, String id) {
-        BlockData syncedData = createSyncedBlockData(originalBlockDataString, id, true);
-        BlockData matchedData = checkMatchStates(syncedData.getAsString(), id);
-
+        BlockData matchedData = checkMatchStates(originalBlockDataString, id);
         if (matchedData != null) {
             return matchedData;
         }
-        return syncedData;
+
+        return createSyncedBlockData(originalBlockDataString, id, true);
     }
 
     //wrapper method for destroying a custom block: un-logs the block, drops custom items, plays custom break sound, and spawns custom break particles
-    public void destroyCustomBlock(Location loc, boolean dropItems, Player player, List<Item> originalDrops) {
+    public void destroyLoggedBlock(Location loc, boolean dropItems, Player player, List<Item> originalDrops) {
         Block block = loc.getWorld().getBlockAt(loc);
         String id = getLoggedStringFromLocation(loc, "id");
 
@@ -306,6 +305,11 @@ public class CustomBlockHelper {
     public BlockData checkMatchStatesSection(String originalBlockDataString, ConfigurationSection section) {
         if (section.contains("state")) {
             String matchKey = section.getName();
+            //removes extra digits from the end of a state name
+            while (Character.isDigit(matchKey.charAt(matchKey.length() - 1))) {
+                matchKey = matchKey.substring(0, matchKey.length() - 1);
+            }
+
             String matchValue = section.get("state").toString();
 
             if (originalBlockDataString.contains(matchKey)) {
@@ -655,7 +659,7 @@ public class CustomBlockHelper {
 
                     if (pushing && yaml != null) {
                         if (yaml.getBoolean(id + ".block.options.piston-breakable")) {
-                            destroyCustomBlock(loc, true, null, null);
+                            destroyLoggedBlock(loc, true, null, null);
                             if (debug >= 3) {
                                 console.info(ChatColor.LIGHT_PURPLE + "Broke the custom block \"" + id + "\" because it was pushed by a piston and \"block.options.piston-breakable\" is true");
                             }

@@ -101,21 +101,26 @@ match:
 
       #  The name of a section ("facing" in the top section here) is the name of the state to be checked
       facing:
+
         #  This is the value of the state above, so here it is checking if the actual BlockData of a block contains the BlockData tag "facing=north"
         state: north
+
         #  Nested states (like "hinge" or "powered" in this example) are only checked if the parent state ("facing" in this example) matches the actual BlockData
         hinge:
           state: left
+
           #  As soon as "disguised-block" is found in a successful match section, the disguised BlockData of the block will be set to this value, and "match-states" will be exited
           disguised-block: iron_block
+
           #  Since this state appears in the same section as "disguised-block", it will never be checked and a block's disguised BlockData will never be diamond_block, even if it matches all the above states and is open
           open:
             state: true
             disguised-block: diamond_block
 
+        #  Any numbers at the end of a state name will be ignored, which allows multiple of the same state to be checked without causing yaml errors for having multiple keys with the same name
         #  Since this appears below a different state section, this will only be checked if the above section fails at some point
-        powered:
-          state: true
+        hinge2:
+          state: right
           open:
             state: false
             disguised-block: emerald_block
