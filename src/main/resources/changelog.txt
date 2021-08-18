@@ -9,7 +9,10 @@
             - The new permission  "worldofzombies.command.item"  has been added for this command
             - The optional flag  "-yaml"  will format the string to start and end with a single quote and escapes the internal single quotes
                 - This flag is intended to be used so the returned string can be pasted directly into a yaml file
-        - Added a MultiBlockChange packet listener with same functionality as existing BlockChange packet listener
+        - Added support for custom blocks that use BlockMultiPlaceEvent
+            - Setup for these blocks are the same as single custom blocks, except for the addition of  the tags  "actual-block2"  and  "disguised-block2"
+                - See the custom block  "custom-door"  in demo.yml for more details
+        - Added a MultiBlockChange packet listener with similar functionality to the existing BlockChange packet listener
         - Added an error message when a duplicate custom block ID definition is detected
         - Custom block definition yaml files are now ONLY loaded on startup and  /woz reload  to increase performance
         - Added a check in BlockChange and MultiBlockChange packets so that blocks will only be disguised if their real BlockData matches the BlockData in the packet
@@ -17,11 +20,15 @@
         - Improved "item" custom block drop tag to include anything in the Material class
         - Added functionality to calculate which custom blocks will drop items based on the "yield" of explosions
         - Added functionality to calculate custom block drops for blocks that break because from explosions
-            - Added  "options.blast-resistant"  to not break in explosions
+            - Added  "options.blast-resistant"  to not break in explosions, and  "options.instant-break"  to break the block instantly when clicked
         - Added piston event functionality (push and pull)
             - Added  "options.cancel-piston-push"  ,  "options.cancel-piston-pull"  , and  "options.piston-breakable"
         - Added the  "match-states"  section inside the  "block"  section of a block definition which will change the disguised BlockData of a block if its actual BlockData matches all of the nested states
             - See the custom block  "match"  in demo.yml for more details
+        - Added the optional sections  "actual-sync-states"  and  "disguised-sync-states"  which are more specific variations of  "sync-states"
+            - "actual-sync-states"  is only checked when calculating syncs for server-side blocks, and  "disguised-sync-states"  is only checked when calculating blocks' disguised BlockData
+            - Including both specific sections and filling them with the same states will yield the same results as the base  "sync-states"  on its own
+            - See the custom block  "no-press-button"  in demo.yml for more details
 
     Changes:
         - Changed structure of all logged blocks (blocks will not auto update)

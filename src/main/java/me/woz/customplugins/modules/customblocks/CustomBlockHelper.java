@@ -129,13 +129,15 @@ public class CustomBlockHelper {
                             Location loc = new Location(world, Double.parseDouble(locParts[0]), Double.parseDouble(locParts[1]), Double.parseDouble(locParts[2]));
                             String locString = world.getName() + ", " + locParts[0] + ", " + locParts[1] + ", " + locParts[2];
                             String id = locationSection.getString("id");
+                            boolean secondBlock = locationSection.getBoolean("secondBlock", false);
+                            String disguisedPathEnd = secondBlock ? "disguised-block2" : "disguised-block";
 
                             BlockData disguisedData;
                             if (recalculateDisguises) {
-                                disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id);
+                                disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, secondBlock);
                                 locationSection.set("disguised-block", disguisedData.getAsString());
                                 if (debug >= 4) {
-                                    console.info(ChatColor.BLUE + "The \"disguised-block\" for the block at " + locString + " was recalculated because the logged and plugin's chunk reload ID did not match or because this world is included in the \"recalculate-chunk-disguises-blacklist\"");
+                                    console.info(ChatColor.BLUE + "The logged \"disguised-block\" for the block at " + locString + " was recalculated because the logged and plugin's chunk reload ID did not match or because this world is included in the \"recalculate-chunk-disguises-blacklist\"");
                                 }
                             } else {
                                 String disguisedBlockString = locationSection.getString("disguised-block");
@@ -145,9 +147,9 @@ public class CustomBlockHelper {
                                         console.info(ChatColor.BLUE + "The disguised BlockData for the block at " + locString + " was taken directly from the logged \"disguised-block\" because the logged and plugin's chunk reload ID matched");
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id);
+                                    disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, secondBlock);
                                     if (debug >= 3) {
-                                        console.warning(ChatColor.YELLOW + "The \"disguised-block\" for the block at " + locString + " was invalid or null, so it was recalculated");
+                                        console.warning(ChatColor.YELLOW + "The logged \"disguised-block\" for the block at " + locString + " was invalid or null, so it was recalculated");
                                     }
                                 }
                             }
@@ -159,7 +161,7 @@ public class CustomBlockHelper {
 
                             if (disguisedData.getMaterial().equals(Material.AIR)) {
                                 if (debug >= 4) {
-                                    console.warning(ChatColor.YELLOW + "(THIS CAN PROBABLY BE IGNORED IF THIS IS DURING A CHUNK BEING LOADED) Did not load the \"" + id + "\" at " + locString + " because its source \"disguised-block\" is empty");
+                                    console.warning(ChatColor.YELLOW + "(THIS CAN PROBABLY BE IGNORED IF THIS IS DURING A CHUNK BEING LOADED) Did not load the \"" + id + "\" at " + locString + " because its source \"" + disguisedPathEnd + "\" is empty");
                                 }
                             } else {
                                 packet.addBlock(loc, disguisedData);
@@ -186,19 +188,89 @@ public class CustomBlockHelper {
     }
 
     //wrapper method for calculating a custom block's disguised BlockData, including sync-states and match-states
-    public BlockData createCustomDisguisedBlockData(String originalBlockDataString, String id) {
+    public BlockData createCustomDisguisedBlockData(String originalBlockDataString, String id, boolean secondBlock) {
         BlockData matchedData = checkMatchStates(originalBlockDataString, id);
         if (matchedData != null) {
             return matchedData;
         }
 
-        return createSyncedBlockData(originalBlockDataString, id, true);
+        return createSyncedBlockData(originalBlockDataString, id, true, secondBlock);
+    }
+
+    //handles logic for placing custom blocks - adapted from BlockPlaceEvent for compatibility with BlockMultiPlaceEvent
+    public void placeCustomBlock(Block block, ItemStack item, Player player, boolean secondBlock) {
+        Chunk chunk = block.getChunk();
+        World world = block.getWorld();
+
+        NBTCompound wozItemComp = new NBTItem(item).getOrCreateCompound("WoZItem");
+        String id = wozItemComp.getString("CustomItem");
+        String sourceFilePath = idToDefinitionFilePath.get(id);
+
+        int x = block.getX();
+        int y = block.getY();
+        int z = block.getZ();
+        String path = "subChunk" + (block.getY() >> 4) + "." + x + "_" + y + "_" + z + "." + "id";
+        String chunkString = world.getName() + ", " + chunk.getX() + ", " + chunk.getZ();
+        String locString = world.getName() + ", " + x + ", " + y + ", " + z;
+
+        if (wozItemComp.getBoolean("IsCustomItem") && sourceFilePath != null) {
+
+            YamlConfiguration sourceYaml = idToDefinitionFile.get(id);
+            if (sourceYaml == null) {
+                console.severe(ChatColor.RED + "An error occurred while trying to load the source file for the custom block \"" + id + "\"");
+                return;
+            }
+
+            if (!sourceYaml.isConfigurationSection(id)) {
+                console.severe(ChatColor.RED + "Could not log the custom block \"" + id + "\" because it does not exist in the file " + sourceFilePath);
+                return;
+            }
+
+            String actualPathEnd = secondBlock ? "actual-block2" : "actual-block";
+            String actual = sourceYaml.getString(id + ".block." + actualPathEnd);
+
+            File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunk.getX() + "." + chunk.getZ() + ".yml");
+            YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
+            if (yaml == null) {
+                return;
+            }
+
+            if (!yaml.contains(path)) {
+                if (actual != null) {
+                    BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false, secondBlock);
+                    if (actualData != null) {
+                        block.setBlockData(actualData);
+                    }
+                } else if (debug >= 3) {
+                    console.warning(ChatColor.YELLOW + "Did not change the server-side block for the custom block \"" + id + "\" at " + locString + " because its source \"" + actualPathEnd + "\" is empty");
+                }
+
+                yaml.set(path, id);
+                if (secondBlock) {
+                    yaml.set(path.substring(0, path.length() - "id".length()) + "secondBlock", true);
+                }
+                if (debug >= 2) {
+                    console.info(ChatColor.AQUA + player.getName() + " added the custom block \"" + id + "\" at " + locString);
+                }
+            }
+
+            try {
+                yaml.save(file);
+                if (debug >= 2) {
+                    console.info(ChatColor.DARK_AQUA + "Saved the file for the chunk at " + chunkString);
+                }
+            } catch (IOException e) {
+                console.severe(ChatColor.RED + "Could not save the file for the chunk at " + chunkString);
+            }
+        } else if (wozItemComp.getBoolean("IsCustomItem") && sourceFilePath == null && debug >= 3) {
+            console.warning(ChatColor.YELLOW + player.getName() + " placed " + block.getBlockData().getAsString() + " at " + locString + " which contains the tags \"IsCustomBlock:" + wozItemComp.getBoolean("IsCustomItem") + "\" and \"CustomBlock:" + id + "\", but \"" + id + "\" is not a valid custom block");
+        }
     }
 
     //wrapper method for destroying a custom block: un-logs the block, drops custom items, plays custom break sound, and spawns custom break particles
     public void destroyLoggedBlock(Location loc, boolean dropItems, Player player, List<Item> originalDrops) {
         Block block = loc.getWorld().getBlockAt(loc);
-        String id = getLoggedStringFromLocation(loc, "id");
+        String id = (String) getLoggedObjectFromLocation(loc, "id");
 
         if (id != null) {
             if (!block.getType().isEmpty()) {
@@ -219,7 +291,7 @@ public class CustomBlockHelper {
 
     //merges disguised-block or actual-block BlockData for a custom block with the sync states in originalBlockDataString
     //null return value indicates an error, and a BlockData with a Material of AIR indicates that the source disguised-block or actual-block does not exist
-    public BlockData createSyncedBlockData(String originalBlockDataString, String id, boolean disguise) {
+    public BlockData createSyncedBlockData(String originalBlockDataString, String id, boolean disguise, boolean secondBlock) {
         YamlConfiguration sourceYaml = idToDefinitionFile.get(id);
         if (sourceYaml == null) {
             console.severe(ChatColor.RED + "The custom block \"" + id + "\" could not be loaded because its source file does not exist");
@@ -232,22 +304,33 @@ public class CustomBlockHelper {
         }
         ConfigurationSection blockSection = sourceYaml.getConfigurationSection(id + ".block");
 
-        String path = disguise ? "disguised-block" : "actual-block";
+        String dataPath = disguise ? "disguised-block" : "actual-block";
+        if (secondBlock) {
+            dataPath += "2";
+        }
 
-        if (sourceYaml.contains(id + ".block." + path)) {
+        if (sourceYaml.contains(id + ".block." + dataPath)) {
             BlockData newData;
             try {
-                newData = Bukkit.createBlockData(sourceYaml.getString(id + ".block." + path));
+                newData = Bukkit.createBlockData(sourceYaml.getString(id + ".block." + dataPath));
                 if (newData.getMaterial().isEmpty()) {
-                    console.severe(ChatColor.RED + "The source \"" + path + "\" for the custom block \"" + id + "\" cannot be a type of air");
+                    console.severe(ChatColor.RED + "The source \"" + dataPath + "\" for the custom block \"" + id + "\" cannot be a type of air");
                     return null;
                 }
             } catch (IllegalArgumentException e) {
-                console.severe(ChatColor.RED + "Could not load the BlockData for the custom block + \"" + id + "\" because its source \"" + path + "\" is invalid");
+                console.severe(ChatColor.RED + "Could not load the BlockData for the custom block + \"" + id + "\" because its source \"" + dataPath + "\" is invalid");
                 return null;
             }
 
-            List<String> syncList = blockSection.getStringList("sync-states");
+            String syncPath = disguise ? "disguised-sync-states" : "actual-sync-states";
+            if (!blockSection.contains(syncPath)) {
+                syncPath = "sync-states";
+                if (!blockSection.contains(syncPath)) {
+                    return newData;
+                }
+            }
+
+            List<String> syncList = blockSection.getStringList(syncPath);
             String syncString = newData.getMaterial().toString().toLowerCase() + "[";
 
             for (String state : syncList) {
@@ -273,7 +356,7 @@ public class CustomBlockHelper {
                 BlockData syncData = Bukkit.createBlockData(syncString);
                 return newData.merge(syncData);
             } catch (IllegalArgumentException e) {
-                console.severe(ChatColor.RED + "Could not sync the states of the custom block \"" + id + "\" because the \"disguised-block\" is incompatible with one or more tags of the server-side block. " + e.getMessage());
+                console.severe(ChatColor.RED + "Could not sync the states of the custom block \"" + id + "\" because its source \"" + dataPath + "\" is incompatible with one or more tags of the server-side block. " + e.getMessage());
                 return null;
             }
         } else {
@@ -343,8 +426,12 @@ public class CustomBlockHelper {
         return null;
     }
 
+    public Object getLoggedObjectFromLocation(Location loc, String path) {
+        return getLoggedObjectFromLocation(loc, path, null);
+    }
+
     //gets a logged string from a location
-    public String getLoggedStringFromLocation(Location loc, String path) {
+    public Object getLoggedObjectFromLocation(Location loc, String path, Object def) {
         World world = loc.getWorld();
         int x = loc.getBlockX();
         int y = loc.getBlockY();
@@ -358,8 +445,12 @@ public class CustomBlockHelper {
 
         String basePath = "subChunk" + subChunkY + "." + x + "_" + y + "_" + z;
         //String locString = world.getName() + ", " + x + ", " + y + ", " + z;
-        if (yaml != null && yaml.contains(basePath + "." + path)) {
-            return yaml.getString(basePath + "." + path);
+        if (yaml != null) {
+            if (def != null) {
+                return yaml.get(basePath + "." + path, def);
+            } else {
+                return yaml.get(basePath + "." + path);
+            }
         }
         return null;
     }
@@ -386,13 +477,13 @@ public class CustomBlockHelper {
     }
 
     //un-logs a block if the block is air, or returns the newly created disguised BlockData for a block
-    public BlockData unLogBlockOrCreateDisguisedBlockData(Location loc, String id) {
+    public BlockData unLogBlockOrCreateDisguisedBlockData(Location loc, String id, boolean secondBlock) {
         Block block = loc.getWorld().getBlockAt(loc);
 
         if (block.getType().isEmpty()) {
             unlogBlock(loc, null);
         } else {
-            BlockData data = createCustomDisguisedBlockData(block.getBlockData().getAsString(), id);
+            BlockData data = createCustomDisguisedBlockData(block.getBlockData().getAsString(), id, secondBlock);
 
             if (data == null) {
                 return null;
@@ -649,7 +740,7 @@ public class CustomBlockHelper {
         Map<Location, Location> moves = new HashMap<>();
         if (!blocks.isEmpty()) {
             for (Block block : blocks) {
-                String id = getLoggedStringFromLocation(block.getLocation(), "id");
+                String id = (String) getLoggedObjectFromLocation(block.getLocation(), "id");
                 if (id != null) {
                     YamlConfiguration yaml = idToDefinitionFile.get(id);
                     Location loc = block.getLocation();

@@ -30,6 +30,10 @@ demo-block:
     options:
       #  Stops a block from being broken by all types of explosions, defaults to "false"
       blast-resistant: true
+
+      #  Causes a block to break instantly when clicked, defaults to "false"
+      instant-break: false
+
       #  Causes a block to break when pushed by pistons, defaults to "false"
       piston-breakable: false
       #  Cancels piston push events if enabled, defaults to "false"
@@ -50,7 +54,7 @@ demo-block:
         conditions:
           - silk_touch
 
-        #  This is the full format for an item section, whose name is a valid Bukkit Material name or custom item id
+        #  This is the full format for an item section, whose name is a valid Bukkit Material name or custom item ID
         diamond:
           #  Adds nbt tags to an item, can be either a full item NBT (shown here) or just NBT tags (shown in the item section cake.no-drops-block)
           nbt: '{id:"minecraft:wooden_axe",tag:{Damage:1},Count:1b}'
@@ -74,12 +78,11 @@ demo-block:
         #  Multiplies the dropped xp by this value
         multiply-xp: 1.5
 
-        #  This is the shortened format for an item, where the key is the name is a valid Bukkit Material or custom item id, and the value represents the "count" tag in a full formatted item section
+        #  This is the shortened format for an item, where the key is the name is a valid Bukkit Material or custom item ID, and the value represents the "count" tag in a full formatted item section
         dirt: 2
 
       cake:
-        no:
-          custom-item: zombie-cake
+        zombie-cake:
           nbt: '{DroppedFromDemoBlock:1b}'
           count: 2
 
@@ -124,3 +127,36 @@ match:
           open:
             state: false
             disguised-block: emerald_block
+
+custom-door:
+  #  The multi custom block handler is versatile, so it will work for all items that become two placed blocks, like beds or doors
+  item: '{id:"minecraft:iron_door",Count:1b}'
+  block:
+      #  This will disguise the main placed block, which is at the location that the player clicked, and would be the same place as if a player placed a single block in the same place
+      disguised-block: glass
+
+      #  This will disguise the second placed block, which is the extra block that is placed next to the main block, like the head of a bed or top of a door
+      disguised-block2: iron_block
+
+no-press-button:
+  item: '{id:"minecraft:oak_button",Count:1b}'
+  block:
+    actual-block: lever
+    disguised-block: stone_button
+
+    #  "actual-sync-states" and "disguised-sync-states" have the same functionality as the base "sync-states", and they are meant to be more specific extensions of the base "sync-states"
+    #  The base  "sync-states"  will be checked after the more specific sections, so  "sync-states"  will take over if either (or both) of the specific sections are missing
+    #  This will only be checked when the server-side block is calculated (when the block is placed)
+    actual-sync-states:
+      - face
+      - facing
+      - powered
+
+    #  This will only be checked when the disguised block is calculated, so in this example, the "powered" state will only be synced when the block is placed
+    disguised-sync-states:
+      - face
+      - facing
+
+    #  Since "actual-sync-states" and "disguised-sync-states" both exist for this block, this section will never be checked
+    sync-states:
+      - powered

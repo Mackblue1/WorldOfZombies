@@ -82,6 +82,7 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
             <version>3.8.1</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.pl3x.purpur</groupId>
