@@ -9,6 +9,7 @@ import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -36,21 +37,35 @@ public class ItemCommand implements SubCommand {
                 }
 
                 if (args[0].equalsIgnoreCase("nbt")) {
+                    boolean offHand = false;
                     ItemStack item = player.getInventory().getItemInMainHand();
+                    if (item.getType() == Material.AIR) {
+                        offHand = true;
+                        ItemStack offHandItem = player.getInventory().getItemInOffHand();
+                        if (offHandItem.getType() != Material.AIR) {
+                            item = offHandItem;
+                        } else {
+                            sender.sendMessage(ChatColor.RED + "You must be holding an item to run this command!");
+                            return true;
+                        }
+                    }
+
+                    String hand = offHand ? "off hand" : "main hand";
                     String itemString;
                     String msgString;
                     try {
                         itemString = NBTItem.convertItemtoNBT(item).toString();
                     } catch (NbtApiException e) {
-                        sender.sendMessage(ChatColor.RED + "An error occurred while getting the NBT string of the " + ChatColor.YELLOW + item.getType() + ChatColor.RED + " in your main hand!");
+                        sender.sendMessage(ChatColor.RED + "An error occurred while getting the NBT string of the " + ChatColor.YELLOW + item.getType() + ChatColor.RED + " in your " + hand + "!");
                         return true;
                     }
+
                     if (args.length > 1 && args[1].equalsIgnoreCase("-yaml")) {
                         itemString = itemString.replaceAll("'", "''");
                         itemString = "'" + itemString + "'";
-                        msgString = ChatColor.GREEN + "Click to copy the YAML formatted NBT string of the " + ChatColor.YELLOW + item.getType() + ChatColor.GREEN + " in your main hand!";
+                        msgString = ChatColor.GREEN + "Click to copy the YAML formatted NBT string of the " + ChatColor.YELLOW + item.getType() + ChatColor.GREEN + " in your " + hand + "!";
                     } else {
-                        msgString = ChatColor.GREEN + "Click to copy the NBT string of the " + ChatColor.YELLOW + item.getType() + ChatColor.GREEN + " in your main hand!";
+                        msgString = ChatColor.GREEN + "Click to copy the NBT string of the " + ChatColor.YELLOW + item.getType() + ChatColor.GREEN + " in your " + hand + "!";
                     }
 
                     TextComponent message = new TextComponent(msgString);

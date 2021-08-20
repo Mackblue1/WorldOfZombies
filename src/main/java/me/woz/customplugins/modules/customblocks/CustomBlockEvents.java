@@ -84,8 +84,8 @@ public class CustomBlockEvents implements Listener {
             YamlConfiguration yaml = idToDefinitionFile.get(id);
             if (yaml != null && yaml.getBoolean(id + ".block.options.instant-break", false)) {
                 Player player = event.getPlayer();
-                player.sendMessage("drop items: " + (player.getGameMode() == GameMode.SURVIVAL));
-                helper.destroyLoggedBlock(event.getBlock().getLocation(), player.getGameMode() == GameMode.SURVIVAL, player, null);
+                event.setInstaBreak(true);
+                //helper.destroyLoggedBlock(event.getBlock().getLocation(), player.getGameMode() == GameMode.SURVIVAL, player, null);
             }
         }
     }
@@ -109,6 +109,7 @@ public class CustomBlockEvents implements Listener {
         Player player = event.getPlayer();
         Location loc = event.getBlock().getLocation();
         List<Item> originalDrops = event.getItems();
+        //console.info(ChatColor.DARK_PURPLE + "bdie");
 
         helper.destroyLoggedBlock(loc, player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty(), player, originalDrops);
     }
@@ -117,10 +118,10 @@ public class CustomBlockEvents implements Listener {
     @EventHandler
     public void entityExplodeEvent(EntityExplodeEvent event) {
         List<Block> blocks = event.blockList();
+        List<Block> blocksCopy = new ArrayList<>(blocks);
         double yield = event.getYield();
 
-        while (blocks.iterator().hasNext()) {
-            Block block = blocks.iterator().next();
+        for (Block block : blocksCopy) {
             Location loc = block.getLocation();
             String id = (String) helper.getLoggedObjectFromLocation(loc, "id");
 

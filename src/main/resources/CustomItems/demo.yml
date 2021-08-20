@@ -138,6 +138,15 @@ custom-door:
       #  This will disguise the second placed block, which is the extra block that is placed next to the main block, like the head of a bed or top of a door
       disguised-block2: iron_block
 
+      match-states:
+        facing:
+            state: north
+            hinge:
+              state: left
+              disguised-block: diamond_block
+              #  For custom multi blocks, the second block will look for this tag instead of "disguised-block" if all states are matched
+              disguised-block2: emerald_block
+
 no-press-button:
   item: '{id:"minecraft:oak_button",Count:1b}'
   block:

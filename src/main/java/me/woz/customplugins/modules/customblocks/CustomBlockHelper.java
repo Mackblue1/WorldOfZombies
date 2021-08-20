@@ -8,12 +8,14 @@ import me.woz.customplugins.util.MultiBlockChangeWrap;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
+import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
@@ -189,7 +191,7 @@ public class CustomBlockHelper {
 
     //wrapper method for calculating a custom block's disguised BlockData, including sync-states and match-states
     public BlockData createCustomDisguisedBlockData(String originalBlockDataString, String id, boolean secondBlock) {
-        BlockData matchedData = checkMatchStates(originalBlockDataString, id);
+        BlockData matchedData = checkMatchStates(originalBlockDataString, id, secondBlock);
         if (matchedData != null) {
             return matchedData;
         }
@@ -275,6 +277,7 @@ public class CustomBlockHelper {
         if (id != null) {
             if (!block.getType().isEmpty()) {
                 block.setType(Material.AIR);
+                //block.breakNaturally();
             }
 
             unlogBlock(loc, player);
@@ -310,10 +313,10 @@ public class CustomBlockHelper {
         }
 
         if (sourceYaml.contains(id + ".block." + dataPath)) {
-            BlockData newData;
+            BlockData unsyncData;
             try {
-                newData = Bukkit.createBlockData(sourceYaml.getString(id + ".block." + dataPath));
-                if (newData.getMaterial().isEmpty()) {
+                unsyncData = Bukkit.createBlockData(sourceYaml.getString(id + ".block." + dataPath));
+                if (unsyncData.getMaterial().isEmpty()) {
                     console.severe(ChatColor.RED + "The source \"" + dataPath + "\" for the custom block \"" + id + "\" cannot be a type of air");
                     return null;
                 }
@@ -326,12 +329,12 @@ public class CustomBlockHelper {
             if (!blockSection.contains(syncPath)) {
                 syncPath = "sync-states";
                 if (!blockSection.contains(syncPath)) {
-                    return newData;
+                    return unsyncData;
                 }
             }
 
             List<String> syncList = blockSection.getStringList(syncPath);
-            String syncString = newData.getMaterial().toString().toLowerCase() + "[";
+            String syncString = unsyncData.getMaterial().toString().toLowerCase() + "[";
 
             for (String state : syncList) {
                 if (originalBlockDataString.contains(state)) {
@@ -354,10 +357,10 @@ public class CustomBlockHelper {
 
             try {
                 BlockData syncData = Bukkit.createBlockData(syncString);
-                return newData.merge(syncData);
+                return unsyncData.merge(syncData);
             } catch (IllegalArgumentException e) {
                 console.severe(ChatColor.RED + "Could not sync the states of the custom block \"" + id + "\" because its source \"" + dataPath + "\" is incompatible with one or more tags of the server-side block. " + e.getMessage());
-                return null;
+                return unsyncData;
             }
         } else {
             return Bukkit.createBlockData(Material.AIR);
@@ -365,7 +368,7 @@ public class CustomBlockHelper {
     }
 
     //checks the match-states section and returns null if no conditions are met or the disguised-block inside the first matching state section
-    public BlockData checkMatchStates(String originalBlockDataString, String id) {
+    public BlockData checkMatchStates(String originalBlockDataString, String id, boolean secondBlock) {
         YamlConfiguration yaml = idToDefinitionFile.get(id);
         if (yaml.isConfigurationSection(id + ".block.match-states")) {
             ConfigurationSection matchStatesSection = yaml.getConfigurationSection(id + ".block.match-states");
@@ -373,7 +376,7 @@ public class CustomBlockHelper {
 
             for (String state : states) {
                 if (matchStatesSection.isConfigurationSection(state)) {
-                    BlockData data = checkMatchStatesSection(originalBlockDataString, matchStatesSection.getConfigurationSection(state));
+                    BlockData data = checkMatchStatesSection(originalBlockDataString, matchStatesSection.getConfigurationSection(state), secondBlock);
                     if (data != null) {
                         return data;
                     }
@@ -385,7 +388,7 @@ public class CustomBlockHelper {
     }
 
     //recursive element of checkMatchStates to actually check the states
-    public BlockData checkMatchStatesSection(String originalBlockDataString, ConfigurationSection section) {
+    public BlockData checkMatchStatesSection(String originalBlockDataString, ConfigurationSection section, boolean secondBlock) {
         if (section.contains("state")) {
             String matchKey = section.getName();
             //removes extra digits from the end of a state name
@@ -405,14 +408,18 @@ public class CustomBlockHelper {
                 }
 
                 String value = afterState.substring((matchKey + "=").length(), stateEnd);
-
                 if (value.equals(matchValue)) {
-                    if (section.contains("disguised-block")) {
-                        return Bukkit.createBlockData(section.getString("disguised-block"));
+                    String disguisePath = "disguised-block";
+                    if (secondBlock) {
+                        disguisePath += "2";
+                    }
+
+                    if (section.contains(disguisePath)) {
+                        return Bukkit.createBlockData(section.getString(disguisePath));
                     } else {
                         for (String state : section.getKeys(false)) {
                             if (section.isConfigurationSection(state)) {
-                                BlockData data = checkMatchStatesSection(originalBlockDataString, section.getConfigurationSection(state));
+                                BlockData data = checkMatchStatesSection(originalBlockDataString, section.getConfigurationSection(state), secondBlock);
                                 if (data != null) {
                                     return data;
                                 }
@@ -641,8 +648,8 @@ public class CustomBlockHelper {
                                         Object value = itemSection.get("count");
                                         int count = 1;
 
-                                        if (value instanceof Integer) {
-                                            count = (Integer) value;
+                                        if (value instanceof Number) {
+                                            count = ((Number) value).intValue();
                                         } else if (value instanceof String && ((String) value).contains("-") && ((String) value).length() >= 3) {
                                             String[] range = ((String) value).split("-");
                                             int min = Integer.parseInt(range[0]);
@@ -696,10 +703,14 @@ public class CustomBlockHelper {
                         console.info(ChatColor.LIGHT_PURPLE + successMsg);
                     }
                 } else {
-                    console.warning(ChatColor.YELLOW + "The drops for the custom block \"" + id + "\" were not changed because the \"enabled\" option is set to false in its drops section");
+                    if (debug >= 3) {
+                        console.warning(ChatColor.YELLOW + "The drops for the custom block \"" + id + "\" were not changed because the \"enabled\" option in its drops section is set to false");
+                    }
                 }
             } else {
-                console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its drop section does not exist");
+                if (debug >= 3) {
+                    console.warning(ChatColor.YELLOW + "The drops for the custom block \"" + id + "\" could not be loaded because its drop section does not exist");
+                }
             }
         } else {
             console.severe(ChatColor.RED + "The drops for the custom block \"" + id + "\" could not be loaded because its definition does not exist in the file " + path);
