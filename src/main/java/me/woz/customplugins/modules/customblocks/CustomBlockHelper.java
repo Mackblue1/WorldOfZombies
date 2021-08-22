@@ -54,7 +54,7 @@ public class CustomBlockHelper {
         config = main.getConfig();
         customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-block.yml"), false, false, debug, "");
 
-        debug = customBlockConfig.getInt("Global.debug");
+        debug = customBlockConfig.getInt("Global.debug", 0);
         recalculateChunkDisguisesBlacklist = customBlockConfig.getStringList("Global.recalculate-chunk-disguises-blacklist");
         idToDefinitionFilePath = customBlockEvents.getIdToDefinitionFilePath();
         idToDefinitionFile = customBlockEvents.getIdToDefinitionFile();

@@ -34,6 +34,9 @@ demo-block:
       #  Causes a block to break instantly when clicked, defaults to "false"
       instant-break: false
 
+      #  Stops a block from being broken by flowing water or lava, defaults to "false"
+      disable-fluid-destroy: false
+
       #  Causes a block to break when pushed by pistons, defaults to "false"
       piston-breakable: false
       #  Cancels piston push events if enabled, defaults to "false"

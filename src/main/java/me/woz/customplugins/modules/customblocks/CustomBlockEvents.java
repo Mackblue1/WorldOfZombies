@@ -71,12 +71,20 @@ public class CustomBlockEvents implements Listener {
     public void multiBlockPlaceEvent(BlockMultiPlaceEvent event) {
         //console.info(ChatColor.DARK_PURPLE + "MBPE");
         List<BlockState> replacedBlockStates = event.getReplacedBlockStates();
-        for (int i = 0; i < replacedBlockStates.size(); i++) {
-            Block block = replacedBlockStates.get(i).getBlock();
-            helper.placeCustomBlock(block, event.getItemInHand(), event.getPlayer(), i >= 1);
+        Block first = replacedBlockStates.get(0).getBlock();
+        Block second = replacedBlockStates.get(1).getBlock();
+
+        if (first.getY() > second.getY() && customBlockConfig.getBoolean("Global.fix-inverted-multi-blocks", true)) {
+            helper.placeCustomBlock(first, event.getItemInHand(), event.getPlayer(), true);
+            helper.placeCustomBlock(second, event.getItemInHand(), event.getPlayer(), false);
+            return;
         }
+
+        helper.placeCustomBlock(first, event.getItemInHand(), event.getPlayer(), false);
+        helper.placeCustomBlock(second, event.getItemInHand(), event.getPlayer(), true);
     }
 
+    //when a player clicks (damages) a block, break the block if its "instant-break" option is true
     @EventHandler(priority = EventPriority.HIGHEST)
     public void clickBlockEvent(BlockDamageEvent event) {
         String id = (String) getCustomBlockHelper().getLoggedObjectFromLocation(event.getBlock().getLocation(), "id");
@@ -156,6 +164,23 @@ public class CustomBlockEvents implements Listener {
         }
     }
 
+    //when water/lava flows into a custom block to break it, destroy the block unless the block's "disable-fluid-destroy" is true
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void liquidFlowEvent(BlockFromToEvent event) {
+        Block block = event.getToBlock();
+        String id = (String) helper.getLoggedObjectFromLocation(block.getLocation(), "id");
+        if (id != null) {
+            YamlConfiguration yaml = idToDefinitionFile.get(id);
+            if (yaml != null) {
+                if (!yaml.getBoolean(id + ".block.options.disable-fluid-destroy", false)) {
+                    helper.destroyLoggedBlock(block.getLocation(), true, null, null);
+                } else {
+                    event.setCancelled(true);
+                }
+            }
+        }
+    }
+
     //listens for MAP_CHUNK (ChunkData) packets and calls the block loader for that chunk after a delay specified in the customBlockConfig
     public void chunkLoadListener() {
         pm.addPacketListener(
@@ -175,7 +200,7 @@ public class CustomBlockEvents implements Listener {
                                 if (debug >= 1 && blocks != 0) {
                                     console.info(ChatColor.DARK_GREEN + "Loaded " + blocks + " blocks in the chunk at " + chunkX + ", " + chunkZ + " in a custom MultiBlockChange packet by " + player.getName());
                                 }
-                            }, customBlockConfig.getLong("Global.packet-send-delay"));
+                            }, customBlockConfig.getLong("Global.chunk-load-delay", 10L));
                         }
                     }
                 }
@@ -342,7 +367,7 @@ public class CustomBlockEvents implements Listener {
             console.info(ChatColor.DARK_AQUA + "Created the file CustomItems" + File.separator + "demo.yml because the CustomItems folder did not exist");
         }
 
-        debug = customBlockConfig.getInt("Global.debug");
+        debug = customBlockConfig.getInt("Global.debug", 0);
         MultiBlockChangeWrap.setDebug(debug);
         helper.reload();
     }

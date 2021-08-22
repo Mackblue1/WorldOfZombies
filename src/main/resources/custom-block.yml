@@ -3,5 +3,17 @@
 #
 
 Global:
+  #  An integer from 0-5 (anything greater than 5 is treated as 5) that changes the amount of debug messages sent in console, where 0 means no debug messages, and 5 is every debug message (including very spammy ones)
+  #  Defaults to "0"
   debug: 0
-  packet-send-delay: 10
+
+  #  The delay (in ticks) between a chunk being loaded and the custom blocks in that chunk being loaded and sent to players
+  #  Defaults to "10"
+  chunk-load-delay: 10
+
+  #  A list of world names which will never recalculate block's "[location].disguised-block" , effectively ignoring the "chunk-reload-id" tag in a custom block log file
+  recalculate-chunk-disguises-blacklist: []
+
+  #  Fixes a bug where vertical multi custom block (doors) would be inverted (main block on top, second block on bottom) by placing on a breakable multi block (tall grass, tall fern, etc)
+  #  Defaults to "true"
+  fix-inverted-multi-blocks: true
