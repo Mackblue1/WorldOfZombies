@@ -137,9 +137,11 @@ public class CustomBlockHelper {
                             BlockData disguisedData;
                             if (recalculateDisguises) {
                                 disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, secondBlock);
-                                locationSection.set("disguised-block", disguisedData.getAsString());
-                                if (debug >= 4) {
-                                    console.info(ChatColor.BLUE + "The logged \"disguised-block\" for the block at " + locString + " was recalculated because the logged and plugin's chunk reload ID did not match or because this world is included in the \"recalculate-chunk-disguises-blacklist\"");
+                                if (disguisedData != null) {
+                                    locationSection.set("disguised-block", disguisedData.getAsString());
+                                    if (debug >= 4) {
+                                        console.info(ChatColor.BLUE + "The logged \"disguised-block\" for the block at " + locString + " was recalculated because the logged and plugin's chunk reload ID did not match or because this world is included in the \"recalculate-chunk-disguises-blacklist\"");
+                                    }
                                 }
                             } else {
                                 String disguisedBlockString = locationSection.getString("disguised-block");
@@ -292,91 +294,123 @@ public class CustomBlockHelper {
         }
     }
 
-    //merges disguised-block or actual-block BlockData for a custom block with the sync states in originalBlockDataString
-    //null return value indicates an error, and a BlockData with a Material of AIR indicates that the source disguised-block or actual-block does not exist
-    public BlockData createSyncedBlockData(String originalBlockDataString, String id, boolean disguise, boolean secondBlock) {
-        YamlConfiguration sourceYaml = idToDefinitionFile.get(id);
-        if (sourceYaml == null) {
-            console.severe(ChatColor.RED + "The custom block \"" + id + "\" could not be loaded because its source file does not exist");
-            return null;
-        }
+    public BlockData createSyncedBlockData(String syncFromBlockDataString, String id, boolean disguise, boolean secondBlock) {
+        return createSyncedBlockData(syncFromBlockDataString, id, null, null, disguise, secondBlock);
+    }
 
-        if (!sourceYaml.isConfigurationSection(id + ".block")) {
-            console.severe(ChatColor.RED + "The custom block \"" + id + "\" could not be loaded because its source \"block\" section is empty");
-            return null;
+    //syncs the specified states from syncFromBlockDataString to disguised-block, actual-block, or a parameter BlockData
+    //null return value indicates an error, and a BlockData with a Material of AIR indicates that the source disguised-block or actual-block does not exist
+    public BlockData createSyncedBlockData(String syncFromBlockDataString, String id, BlockData syncToBlockData, ConfigurationSection theSection, boolean disguise, boolean secondBlock) {
+        ConfigurationSection section;
+        if (theSection != null) {
+            section = theSection;
+        } else {
+            YamlConfiguration sourceYaml = idToDefinitionFile.get(id);
+            if (sourceYaml == null) {
+                console.severe(ChatColor.RED + "The custom block \"" + id + "\" could not be loaded because its source file does not exist");
+                return null;
+            }
+
+            if (!sourceYaml.isConfigurationSection(id + ".block")) {
+                console.severe(ChatColor.RED + "The custom block \"" + id + "\" could not be loaded because its source \"block\" section is empty");
+                return null;
+            }
+            section = sourceYaml.getConfigurationSection(id + ".block");
         }
-        ConfigurationSection blockSection = sourceYaml.getConfigurationSection(id + ".block");
 
         String dataPath = disguise ? "disguised-block" : "actual-block";
+        String syncPath = disguise ? "disguised-sync-states" : "actual-sync-states";
         if (secondBlock) {
             dataPath += "2";
+            syncPath += "2";
         }
 
-        if (sourceYaml.contains(id + ".block." + dataPath)) {
-            BlockData unsyncData;
+        BlockData unsyncData;
+        if (syncToBlockData != null) {
+            unsyncData = syncToBlockData;
+        } else if (section.contains(dataPath)) {
             try {
-                unsyncData = Bukkit.createBlockData(sourceYaml.getString(id + ".block." + dataPath));
+                unsyncData = Bukkit.createBlockData(section.getString(dataPath));
                 if (unsyncData.getMaterial().isEmpty()) {
                     console.severe(ChatColor.RED + "The source \"" + dataPath + "\" for the custom block \"" + id + "\" cannot be a type of air");
                     return null;
                 }
             } catch (IllegalArgumentException e) {
-                console.severe(ChatColor.RED + "Could not load the BlockData for the custom block + \"" + id + "\" because its source \"" + dataPath + "\" is invalid");
+                console.severe(ChatColor.RED + "Could not load the BlockData for the custom block \"" + id + "\" because its source \"" + dataPath + "\" is invalid");
                 return null;
-            }
-
-            String syncPath = disguise ? "disguised-sync-states" : "actual-sync-states";
-            if (!blockSection.contains(syncPath)) {
-                syncPath = "sync-states";
-                if (!blockSection.contains(syncPath)) {
-                    return unsyncData;
-                }
-            }
-
-            List<String> syncList = blockSection.getStringList(syncPath);
-            String syncString = unsyncData.getMaterial().toString().toLowerCase() + "[";
-
-            for (String state : syncList) {
-                if (originalBlockDataString.contains(state)) {
-                    String afterState = originalBlockDataString.substring(originalBlockDataString.indexOf(state));
-                    int stateEnd = afterState.indexOf("]");
-                    if (afterState.contains(",")) {
-                        if (afterState.indexOf(",") < stateEnd) {
-                            stateEnd = afterState.indexOf(",");
-                        }
-                    }
-                    syncString += afterState.substring(0, stateEnd) + ",";
-                }
-            }
-
-            if (syncString.contains(",")) {
-                syncString = syncString.substring(0, syncString.lastIndexOf(",")) + "]";
-            } else {
-                syncString = syncString.substring(0, syncString.length() - 1);
-            }
-
-            try {
-                BlockData syncData = Bukkit.createBlockData(syncString);
-                return unsyncData.merge(syncData);
-            } catch (IllegalArgumentException e) {
-                console.severe(ChatColor.RED + "Could not sync the states of the custom block \"" + id + "\" because its source \"" + dataPath + "\" is incompatible with one or more tags of the server-side block. " + e.getMessage());
-                return unsyncData;
             }
         } else {
             return Bukkit.createBlockData(Material.AIR);
+        }
+
+        //if the specific path with or without "2" does not exist
+        if (!section.contains(syncPath)) {
+            //if the specific path has "2", check again without the "2"
+            if (syncPath.contains("2")) {
+                syncPath = syncPath.substring(0, syncPath.length() - 1);
+
+                //if the specific path without a "2" does not exist, check the base path with a "2"
+                if (!section.contains(syncPath)) {
+                    syncPath = "sync-states2";
+
+                    //if the base path with a "2" does not exist, check the base path
+                    if (!section.contains(syncPath)) {
+                        syncPath = "sync-states";
+                        if (!section.contains(syncPath)) {
+                            return unsyncData;
+                        }
+                    }
+                }
+            } else {
+                //if the specific path without a "2" doesn't exist, check the base path
+                syncPath = "sync-states";
+                if (!section.contains(syncPath)) {
+                    return unsyncData;
+                }
+            }
+        }
+
+        List<String> syncList = section.getStringList(syncPath);
+        String syncString = unsyncData.getMaterial().toString().toLowerCase() + "[";
+
+        for (String state : syncList) {
+            if (syncFromBlockDataString.contains(state)) {
+                String afterState = syncFromBlockDataString.substring(syncFromBlockDataString.indexOf(state));
+                int stateEnd = afterState.indexOf("]");
+                if (afterState.contains(",")) {
+                    if (afterState.indexOf(",") < stateEnd) {
+                        stateEnd = afterState.indexOf(",");
+                    }
+                }
+                syncString += afterState.substring(0, stateEnd) + ",";
+            }
+        }
+
+        if (syncString.contains(",")) {
+            syncString = syncString.substring(0, syncString.lastIndexOf(",")) + "]";
+        } else {
+            syncString = syncString.substring(0, syncString.length() - 1);
+        }
+
+        try {
+            BlockData syncData = Bukkit.createBlockData(syncString);
+            return unsyncData.merge(syncData);
+        } catch (IllegalArgumentException e) {
+            console.severe(ChatColor.RED + "Could not sync the states of the custom block \"" + id + "\" because its source \"" + dataPath + "\" is incompatible with one or more tags of the server-side block. " + e.getMessage());
+            return unsyncData;
         }
     }
 
     //checks the match-states section and returns null if no conditions are met or the disguised-block inside the first matching state section
     public BlockData checkMatchStates(String originalBlockDataString, String id, boolean secondBlock) {
         YamlConfiguration yaml = idToDefinitionFile.get(id);
-        if (yaml.isConfigurationSection(id + ".block.match-states")) {
+        if (yaml != null && yaml.isConfigurationSection(id + ".block.match-states")) {
             ConfigurationSection matchStatesSection = yaml.getConfigurationSection(id + ".block.match-states");
             Set<String> states = matchStatesSection.getKeys(false);
 
             for (String state : states) {
                 if (matchStatesSection.isConfigurationSection(state)) {
-                    BlockData data = checkMatchStatesSection(originalBlockDataString, matchStatesSection.getConfigurationSection(state), secondBlock);
+                    BlockData data = checkMatchStatesSection(originalBlockDataString, id, matchStatesSection.getConfigurationSection(state), secondBlock);
                     if (data != null) {
                         return data;
                     }
@@ -388,7 +422,7 @@ public class CustomBlockHelper {
     }
 
     //recursive element of checkMatchStates to actually check the states
-    public BlockData checkMatchStatesSection(String originalBlockDataString, ConfigurationSection section, boolean secondBlock) {
+    public BlockData checkMatchStatesSection(String originalBlockDataString, String id, ConfigurationSection section, boolean secondBlock) {
         if (section.contains("state")) {
             String matchKey = section.getName();
             //removes extra digits from the end of a state name
@@ -415,11 +449,17 @@ public class CustomBlockHelper {
                     }
 
                     if (section.contains(disguisePath)) {
-                        return Bukkit.createBlockData(section.getString(disguisePath));
+                        try {
+                            BlockData unsyncData = Bukkit.createBlockData(section.getString(disguisePath));
+                            return createSyncedBlockData(originalBlockDataString, id, unsyncData, section, true, secondBlock);
+                        } catch (IllegalArgumentException e) {
+                            console.severe(ChatColor.RED + "Could not load the disguised BlockData in the \"match-states\" section of the custom block \"" + id + "\" because the BlockData at \"" + section.getCurrentPath() + "." + disguisePath + "\" is invalid");
+                            return null;
+                        }
                     } else {
                         for (String state : section.getKeys(false)) {
                             if (section.isConfigurationSection(state)) {
-                                BlockData data = checkMatchStatesSection(originalBlockDataString, section.getConfigurationSection(state), secondBlock);
+                                BlockData data = checkMatchStatesSection(originalBlockDataString, id, section.getConfigurationSection(state), secondBlock);
                                 if (data != null) {
                                     return data;
                                 }

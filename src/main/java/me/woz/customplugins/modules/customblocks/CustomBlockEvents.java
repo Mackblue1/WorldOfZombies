@@ -156,11 +156,6 @@ public class CustomBlockEvents implements Listener {
         }
     }
 
-    /*@EventHandler(priority = EventPriority.HIGHEST)
-    public void middleClickEvent(InventoryCreativeEvent event) {
-
-    }*/
-
     //listens for MAP_CHUNK (ChunkData) packets and calls the block loader for that chunk after a delay specified in the customBlockConfig
     public void chunkLoadListener() {
         pm.addPacketListener(

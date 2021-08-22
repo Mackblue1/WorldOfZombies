@@ -29,6 +29,8 @@
             - "actual-sync-states"  is only checked when calculating syncs for server-side blocks, and  "disguised-sync-states"  is only checked when calculating blocks' disguised BlockData
             - Including both specific sections and filling them with the same states will yield the same results as the base  "sync-states"  on its own
             - See the custom block  "no-press-button"  in demo.yml for more details
+            - These sections can also appear as  "sync-states2"  ,  "disguised-sync-states2"  , and  "actual-sync-states2"
+                - These only apply to the second block in a custom block with a second block, and they roll back to the section without a "2" if this variant does not exist
 
     Changes:
         - Changed structure of all logged blocks (blocks will not auto update)
