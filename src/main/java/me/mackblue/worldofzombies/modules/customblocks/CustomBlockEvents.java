@@ -1,12 +1,12 @@
-package me.woz.customplugins.modules.customblocks;
+package me.mackblue.worldofzombies.modules.customblocks;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.util.MultiBlockChangeWrap;
+import me.mackblue.worldofzombies.util.MultiBlockChangeWrap;
+import me.mackblue.worldofzombies.WorldOfZombies;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.*;
 import org.bukkit.block.Block;

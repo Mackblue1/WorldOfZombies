@@ -1,7 +1,7 @@
-package me.woz.customplugins.commands;
+package me.mackblue.worldofzombies.commands;
 
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
+import me.mackblue.worldofzombies.WorldOfZombies;
+import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;

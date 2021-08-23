@@ -1,4 +1,4 @@
-package me.woz.customplugins.commands;
+package me.mackblue.worldofzombies.commands;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;

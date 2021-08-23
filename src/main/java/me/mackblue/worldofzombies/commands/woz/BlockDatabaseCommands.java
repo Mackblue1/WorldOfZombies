@@ -1,7 +1,7 @@
-package me.woz.customplugins.commands.woz;
+package me.mackblue.worldofzombies.commands.woz;
 
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.commands.SubCommand;
+import me.mackblue.worldofzombies.WorldOfZombies;
+import me.mackblue.worldofzombies.commands.SubCommand;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;

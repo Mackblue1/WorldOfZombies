@@ -1,4 +1,4 @@
-package me.woz.customplugins.util;
+package me.mackblue.worldofzombies.util;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;

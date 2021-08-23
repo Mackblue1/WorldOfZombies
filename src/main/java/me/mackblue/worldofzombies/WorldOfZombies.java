@@ -1,14 +1,14 @@
-package me.woz.customplugins;
+package me.mackblue.worldofzombies;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
-import me.woz.customplugins.commands.CommandHandler;
-import me.woz.customplugins.commands.SCommand;
-import me.woz.customplugins.commands.TestCommand;
-import me.woz.customplugins.commands.woz.BlockDatabaseCommands;
-import me.woz.customplugins.commands.woz.GetCustomItemCommand;
-import me.woz.customplugins.commands.SCommandTab;
-import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
+import me.mackblue.worldofzombies.commands.CommandHandler;
+import me.mackblue.worldofzombies.commands.SCommand;
+import me.mackblue.worldofzombies.commands.TestCommand;
+import me.mackblue.worldofzombies.commands.woz.BlockDatabaseCommands;
+import me.mackblue.worldofzombies.commands.woz.GetCustomItemCommand;
+import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
+import me.mackblue.worldofzombies.commands.SCommandTab;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;

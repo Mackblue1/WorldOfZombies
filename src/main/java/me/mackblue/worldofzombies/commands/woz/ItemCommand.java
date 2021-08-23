@@ -1,9 +1,9 @@
-package me.woz.customplugins.commands.woz;
+package me.mackblue.worldofzombies.commands.woz;
 
 import de.tr7zw.nbtapi.NBTItem;
 import de.tr7zw.nbtapi.NbtApiException;
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.commands.SubCommand;
+import me.mackblue.worldofzombies.WorldOfZombies;
+import me.mackblue.worldofzombies.commands.SubCommand;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;

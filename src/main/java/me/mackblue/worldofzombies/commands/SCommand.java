@@ -1,10 +1,10 @@
-package me.woz.customplugins.commands;
+package me.mackblue.worldofzombies.commands;
 
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.commands.woz.ItemCommand;
-import me.woz.customplugins.commands.woz.ReloadCommand;
-import me.woz.customplugins.commands.woz.GetCustomItemCommand;
-import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
+import me.mackblue.worldofzombies.commands.woz.GetCustomItemCommand;
+import me.mackblue.worldofzombies.commands.woz.ItemCommand;
+import me.mackblue.worldofzombies.commands.woz.ReloadCommand;
+import me.mackblue.worldofzombies.WorldOfZombies;
+import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

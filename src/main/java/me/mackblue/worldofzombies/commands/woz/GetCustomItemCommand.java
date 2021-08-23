@@ -1,9 +1,9 @@
-package me.woz.customplugins.commands.woz;
+package me.mackblue.worldofzombies.commands.woz;
 
 import de.tr7zw.nbtapi.NbtApiException;
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.commands.SubCommand;
-import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
+import me.mackblue.worldofzombies.WorldOfZombies;
+import me.mackblue.worldofzombies.commands.SubCommand;
+import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;

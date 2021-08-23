@@ -2,7 +2,7 @@ name: WorldOfZombies
 version: ${project.version}
 author: Mackblue
 description: World of Zombies primary custom plugin
-main: me.woz.customplugins.WorldOfZombies
+main: me.mackblue.worldofzombies.WorldOfZombies
 website: https://github.com/Mackblue1/WorldOfZombies
 api-version: 1.16
 depend:

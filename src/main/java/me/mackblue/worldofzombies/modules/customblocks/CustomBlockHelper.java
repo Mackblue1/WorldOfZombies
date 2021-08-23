@@ -1,21 +1,19 @@
-package me.woz.customplugins.modules.customblocks;
+package me.mackblue.worldofzombies.modules.customblocks;
 
 import de.tr7zw.nbtapi.NBTCompound;
 import de.tr7zw.nbtapi.NBTContainer;
 import de.tr7zw.nbtapi.NBTItem;
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.util.MultiBlockChangeWrap;
+import me.mackblue.worldofzombies.WorldOfZombies;
+import me.mackblue.worldofzombies.util.MultiBlockChangeWrap;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
-import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;

@@ -1,4 +1,4 @@
-package me.woz.customplugins.commands;
+package me.mackblue.worldofzombies.commands;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;
@@ -6,8 +6,8 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import com.destroystokyo.paper.entity.ai.*;
-import me.woz.customplugins.WorldOfZombies;
-import me.woz.customplugins.modules.customblocks.CustomBlockEvents;
+import me.mackblue.worldofzombies.WorldOfZombies;
+import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
