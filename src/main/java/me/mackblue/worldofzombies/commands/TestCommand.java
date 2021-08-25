@@ -32,11 +32,11 @@ public class TestCommand implements CommandExecutor {
     private final ProtocolManager pm;
     private final CustomBlockEvents customBlockEvents;
 
-    public TestCommand(WorldOfZombies main, ProtocolManager pm, CustomBlockEvents handler) {
+    public TestCommand(WorldOfZombies main, ProtocolManager pm, CustomBlockEvents customBlockEvents) {
         this.main = main;
         this.console = main.getLogger();
         this.pm = pm;
-        this.customBlockEvents = handler;
+        this.customBlockEvents = customBlockEvents;
     }
 
     @Override
@@ -63,6 +63,10 @@ public class TestCommand implements CommandExecutor {
                 pm.sendServerPacket(player, packet);
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
+            }
+
+            if (args.length >= 1) {
+                player.sendMessage("player has perm " + args[0] + ": " + player.hasPermission(args[0]));
             }
 
             //player.sendMessage(ChatColor.GREEN + "chunk: " + chunk.getX() + ", " + chunk.getZ() + "   local target: " + (target.getX() & 0xF) + ", " + (target.getY() & 0xF) + ", " + (target.getZ() & 0xF));

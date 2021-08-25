@@ -154,7 +154,7 @@ public class BlockDatabaseCommands implements SubCommand {
 
                     if (args[1].equalsIgnoreCase(args[2])) {
                         sender.sendMessage(ChatColor.RED + "You cannot clone the custom block database from " + ChatColor.YELLOW + args[1] + ChatColor.RED + " to itself!");
-                        return false;
+                        return true;
                     }
 
                     confirmMap.put(sender, "clone," + args[1] + "," + args[2]);

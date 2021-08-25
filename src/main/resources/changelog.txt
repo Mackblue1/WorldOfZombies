@@ -32,6 +32,8 @@
             - See the custom block  "no-press-button"  in demo.yml for more details
             - These sections can also appear as  "sync-states2"  ,  "disguised-sync-states2"  , and  "actual-sync-states2"
                 - These only apply to the second block in a custom block with a second block, and they roll back to the section without a "2" if this variant does not exist
+        - Added a new command tab system that only shows the commands that are available to a player
+            - The base /woz command will only show if a player has the new permission  "worldofzombies.command.base"  which is a child of all other command permissions
 
     Changes:
         - Renamed the custom block config option  "Global.packet-send-delay"  to  "Global.chunk-load-delay"

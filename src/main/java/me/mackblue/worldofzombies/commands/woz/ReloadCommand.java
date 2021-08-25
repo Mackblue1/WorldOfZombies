@@ -55,6 +55,6 @@ public class ReloadCommand implements SubCommand {
             sender.sendMessage(ChatColor.RED + "You do not have permission to run this command!");
         }
 
-        return false;
+        return true;
     }
 }

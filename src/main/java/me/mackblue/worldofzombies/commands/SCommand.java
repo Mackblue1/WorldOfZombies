@@ -119,12 +119,10 @@ class InfoCommand implements SubCommand {
             for (Map.Entry<List<String>, List<String>> entry : commandHandler.getCommandInfoMap().entrySet()) {
                 sender.sendMessage("   " + ChatColor.AQUA + "/woz " + String.join(" ", entry.getKey()) + entry.getValue().get(0) + ChatColor.WHITE + " - " + entry.getValue().get(1));
             }
-
-            return true;
         } else {
             sender.sendMessage(ChatColor.RED + "You do not have permission to run this command!");
         }
 
-        return false;
+        return true;
     }
 }

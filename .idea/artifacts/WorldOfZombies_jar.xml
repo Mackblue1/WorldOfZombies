@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="WorldOfZombies:jar">
-    <output-path>D:/Desktop/localhost/plugins</output-path>
-    <root id="archive" name="WorldOfZombies.jar">
-      <element id="module-output" name="WorldOfZombies" />
-    </root>
-  </artifact>
-</component>

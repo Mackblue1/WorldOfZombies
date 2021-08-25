@@ -25,7 +25,7 @@ public class ItemCommand implements SubCommand {
     public ItemCommand(WorldOfZombies main) {
         this.main = main;
         console = main.getLogger();
-    }/*           /woz item | nbt -yaml             */
+    }
 
     @Override
     public boolean subCommand(CommandSender sender, Command cmd, String alias, String[] args) {

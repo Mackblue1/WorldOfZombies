@@ -2,6 +2,7 @@ package me.mackblue.worldofzombies.commands;
 
 import me.mackblue.worldofzombies.WorldOfZombies;
 import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
@@ -39,36 +40,55 @@ public class SCommandTab implements TabCompleter {
         List<String> completions = new ArrayList<>();
         if (args.length == 2 && args[0].equalsIgnoreCase("database")) {
             completions = new ArrayList<>(Arrays.asList("delete", "clone", "confirm"));
-            completions = getApplicableTabCompleter(args[1], completions);
+            completions = getApplicableTabCompleter(args[1], completions, args[0], sender);
+
         } else if (args.length == 2 && args[0].equalsIgnoreCase("get")) {
-            completions = getApplicableTabCompleter(args[1], customItems);
+            completions = getApplicableTabCompleter(args[1], customItems, args[0], sender);
+
         } else if (args[0].equalsIgnoreCase("item")) {
             if (args.length == 2) {
                 completions = new ArrayList<>(Arrays.asList("nbt"));
-                completions = getApplicableTabCompleter(args[1], completions);
+                completions = getApplicableTabCompleter(args[1], completions, args[0], sender);
             } else if (args.length == 3) {
                 completions = new ArrayList<>(Arrays.asList("-yaml"));
-                completions = getApplicableTabCompleter(args[2], completions);
+                completions = getApplicableTabCompleter(args[2], completions, args[0], sender);
             }
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("")) {
 
         } else if (args.length <= 1) {
-            completions = new ArrayList<>(Arrays.asList("reload", "database", "info", "get", "item"));
-            completions = getApplicableTabCompleter(args.length == 1 ? args[0] : "", completions);
+            completions = new ArrayList<>(Arrays.asList("reload", "info", "database", "get", "item"));
+            completions = getApplicableTabCompleter(args.length == 1 ? args[0] : "", completions, args[0], sender);
         }
         Collections.sort(completions);
         return completions;
     }
 
     //handles tab completion while the user is typing a word by filtering the full list of completions based on what is already typed
-    private List<String> getApplicableTabCompleter(String arg, List<String> completions) {
-        if (arg == null || arg.equalsIgnoreCase("")) {
-            return completions;
-        }
+    private List<String> getApplicableTabCompleter(String arg, List<String> completions, String subCmd, CommandSender sender) {
         List<String> valid = new ArrayList<>();
+        if (arg == null || arg.equalsIgnoreCase("")) {
+            for (String posib : completions) {
+                if (!subCmd.equalsIgnoreCase(arg)) {
+                    //if the checked arg isn't the name of a sub command (not the 1st arg), check the permission of the sub command
+                    if (sender.hasPermission("worldofzombies.command." + subCmd)) {
+                        valid.add(posib);
+                    }
+                } else if (sender.hasPermission("worldofzombies.command." + posib)) {
+                    valid.add(posib);
+                }
+            }
+            return valid;
+        }
+
         for (String posib : completions) {
             if (posib.startsWith(arg)) {
-                valid.add(posib);
+                //if the checked arg is the name of a sub command being typed, check the permission of the full sub command (posib)
+                if (subCmd.equalsIgnoreCase(arg)) {
+                    subCmd = posib;
+                }
+
+                if (sender.hasPermission("worldofzombies.command." + subCmd)) {
+                    valid.add(posib);
+                }
             }
         }
         return valid;

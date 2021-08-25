@@ -7,7 +7,7 @@ website: https://github.com/Mackblue1/WorldOfZombies
 api-version: 1.16
 depend:
   - ProtocolLib
-  - LibsDisguises
+#  - LibsDisguises
   - NBTAPI
 
 commands:
@@ -15,16 +15,21 @@ commands:
     description: Main plugin command which is used to run all sub-commands
     aliases: [woz]
     usage: "§cUsage: /woz [command] [args]"
+    permission: worldofzombies.command.base
+    permission-message: "§cYou do not have permission to run this command!"
   woztest:
     description: Test random features (should not be used without knowing specifically what this does because its functionality changes often)
+    aliases: [wt]
     usage: "§cUsage: /woztest"
-    permission: worldofzombies.*
+    permission: worldofzombies.command.*
+    permission-message: "§cYou do not have permission to run this command!"
 
 permissions:
   worldofzombies.*:
     description: Includes all permissions for this plugin
     children:
       worldofzombies.command.*: true
+
   worldofzombies.command.*:
     description: Allows a player to run any of this plugin's commands
     children:
@@ -33,13 +38,32 @@ permissions:
       worldofzombies.command.database: true
       worldofzombies.command.get: true
       worldofzombies.command.item: true
+
+
+  worldofzombies.command.base:
+    description: Base permission which allows a player to use the base /woz command
+
   worldofzombies.command.reload:
-    description: Allows a player to reload this plugin's config files
+    description: Reload this plugin's config files
+    children:
+      worldofzombies.command.base: true
+
   worldofzombies.command.info:
-    description: Allows a player to get information about this plugin
+    description: Get information about this plugin
+    children:
+      worldofzombies.command.base: true
+
   worldofzombies.command.database:
-    description: Allows a player to delete or clone worlds' custom block databases
+    description: Delete or clone worlds' custom block databases
+    children:
+      worldofzombies.command.base: true
+
   worldofzombies.command.get:
-    description: Allows a player to get the item from a custom block's definition
+    description: Get the "item" from a custom block's definition
+    children:
+      worldofzombies.command.base: true
+
   worldofzombies.command.item:
-    description: Allows a player to get the NBT API string for the held item
+    description: Get the NBT API string for the held item
+    children:
+      worldofzombies.command.base: true
