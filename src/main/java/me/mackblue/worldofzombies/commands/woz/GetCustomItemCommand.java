@@ -51,10 +51,12 @@ public class GetCustomItemCommand implements SubCommand {
                                     int count = Integer.parseInt(args[1]);
                                     if (count < 1) {
                                         sender.sendMessage(ChatColor.RED + "The amount \"" + args[1] + "\" must be greater than 0!");
+                                        return true;
                                     }
                                     item.setAmount(count);
                                 } catch (NumberFormatException e) {
                                     sender.sendMessage(ChatColor.RED + "\"" + args[1] + "\" is not a valid amount!");
+                                    return true;
                                 }
                             }
                         } catch (NbtApiException | NullPointerException e) {

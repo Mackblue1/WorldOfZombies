@@ -62,7 +62,7 @@ public class SCommandTab implements TabCompleter {
         return completions;
     }
 
-    //handles tab completion while the user is typing a word by filtering the full list of completions based on what is already typed
+    //handles tab completion while the user is typing a word by filtering the full list of completions based on what is already typed and the player's permissions
     private List<String> getApplicableTabCompleter(String arg, List<String> completions, String subCmd, CommandSender sender) {
         List<String> valid = new ArrayList<>();
         if (arg == null || arg.equalsIgnoreCase("")) {
