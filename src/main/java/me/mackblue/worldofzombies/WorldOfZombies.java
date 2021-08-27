@@ -62,6 +62,8 @@ public class WorldOfZombies extends JavaPlugin {
 
             getCustomItemCommand = new GetCustomItemCommand(this, customBlockEvents);
             commandHandler.registerCommand("get", getCustomItemCommand, " [id] (amount)", "Gives the player the item specified in a custom block's \"item\" definition tag");
+
+            console.info(ChatColor.AQUA + "Loaded the custom block module");
         }
 
         sCommandTab = new SCommandTab(this, customBlockEvents);

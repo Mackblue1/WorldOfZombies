@@ -102,13 +102,33 @@ public class CustomBlockEvents implements Listener {
     @EventHandler
     public void blockDropXpEvent(BlockExpEvent event) {
         String id = (String) helper.getLoggedObjectFromLocation(event.getBlock().getLocation(), "id");
-        if (event.getExpToDrop() != 0 && id != null) {
+        if (event.getExpToDrop() != 0) {
             YamlConfiguration yaml = idToDefinitionFile.get(id);
             if (yaml != null && yaml.getBoolean(id + ".block.drops.enabled", true) && yaml.getBoolean(id + ".block.drops.cancel-xp")) {
                 event.setExpToDrop(0);
             }
         }
 
+    }
+
+    //handler to check for a player breaking an unbreakable block
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void blockBreakEvent(BlockBreakEvent event) {
+        Player player = event.getPlayer();
+        Location loc = event.getBlock().getLocation();
+
+        String id = (String) helper.getLoggedObjectFromLocation(loc, "id");
+        YamlConfiguration yaml = idToDefinitionFile.get(id);
+        if (yaml != null) {
+            if (yaml.getBoolean(id + ".block.options.unbreakable", false)) {
+                if (player.getGameMode() != GameMode.CREATIVE) {
+                    event.setCancelled(true);
+                    if (debug >= 3) {
+                        console.info(ChatColor.BLUE + player.getName()  + " was not able to break the custom block \"" + id + "\" because it is unbreakable");
+                    }
+                }
+            }
+        }
     }
 
     //custom block dropping logic based on options in a custom block's "block.drops" definition section
@@ -137,10 +157,16 @@ public class CustomBlockEvents implements Listener {
                 blocks.remove(block);
                 YamlConfiguration yaml = idToDefinitionFile.get(id);
                 if (yaml != null && !yaml.getBoolean(id + ".block.options.blast-resistant", false)) {
-                    //removing block from explosion and setting to air works, but is there a better way to remove original exploded block drops?
+                    if (!yaml.getBoolean(id + ".block.options.unbreakable", false)) {
+                        //removing block from explosion and setting to air works, but is there a better way to remove original exploded block drops?
 
-                    if (yield > 0) {
-                        helper.destroyLoggedBlock(loc, Math.random() < yield, null, null);
+                        if (yield > 0) {
+                            helper.destroyLoggedBlock(loc, Math.random() < yield, null, null);
+                        }
+                    } else {
+                        if (debug >= 3) {
+                            console.info(ChatColor.BLUE + "The custom block \"" + id + "\" was not broken in an explosion because it is unbreakable");
+                        }
                     }
                 }
             }
@@ -173,7 +199,14 @@ public class CustomBlockEvents implements Listener {
             YamlConfiguration yaml = idToDefinitionFile.get(id);
             if (yaml != null) {
                 if (!yaml.getBoolean(id + ".block.options.disable-fluid-destroy", false)) {
-                    helper.destroyLoggedBlock(block.getLocation(), true, null, null);
+                    if (!yaml.getBoolean(id + ".block.options.unbreakable", false)) {
+                        helper.destroyLoggedBlock(block.getLocation(), true, null, null);
+                    } else {
+                        event.setCancelled(true);
+                        if (debug >= 3) {
+                            console.info(ChatColor.BLUE + "The custom block \"" + id + "\" was not broken by a liquid because it is unbreakable");
+                        }
+                    }
                 } else {
                     event.setCancelled(true);
                 }

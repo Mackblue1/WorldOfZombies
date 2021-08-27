@@ -37,7 +37,11 @@ demo-block:
       #  Stops a block from being broken by flowing water or lava, defaults to "false"
       disable-fluid-destroy: false
 
+      #  Stops a block from being broken by anything other than a player in creative mode, defaults to "false"
+      unbreakable: false
+
       #  Causes a block to break when pushed by pistons, defaults to "false"
+      #  Due to limitations made by the game, blocks will only break if there is a free block in the position where they would be if the block didn't break
       piston-breakable: false
       #  Cancels piston push events if enabled, defaults to "false"
       cancel-piston-push: true

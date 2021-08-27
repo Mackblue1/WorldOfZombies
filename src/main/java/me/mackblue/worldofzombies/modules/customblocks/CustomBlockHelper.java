@@ -783,7 +783,7 @@ public class CustomBlockHelper {
         }
     }
 
-    //handles custom blocks that are being pushed/pulled by a piston
+    //handles custom blocks that are being pushed/pulled by a piston, return of "true" means to cancel the event
     public boolean handleMovedBlocks(List<Block> blocks, BlockFace blockFace, boolean pushing) {
         Map<Location, Location> moves = new HashMap<>();
         if (!blocks.isEmpty()) {
@@ -796,28 +796,40 @@ public class CustomBlockHelper {
                     String locString = loc.getWorld().getName() + ", " + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ();
                     String newLocString = newLoc.getWorld().getName() + ", " + newLoc.getBlockX() + ", " + newLoc.getBlockY() + ", " + newLoc.getBlockZ();
 
-                    if (pushing && yaml != null) {
-                        if (yaml.getBoolean(id + ".block.options.piston-breakable") && newLoc.getBlock().getType().isEmpty()) {
-                            destroyLoggedBlock(loc, true, null, null);
-                            if (debug >= 3) {
-                                console.info(ChatColor.LIGHT_PURPLE + "Broke the custom block \"" + id + "\" because it was pushed by a piston and \"block.options.piston-breakable\" is true");
-                            }
-                        } else if (!yaml.getBoolean(id + ".block.options.cancel-piston-push")) {
-                            moves.put(loc, newLoc);
-                            if (debug >= 3) {
-                                console.info(ChatColor.LIGHT_PURPLE + "Pushed the custom block \"" + id + "\" from " + locString + " to " + newLocString);
+                    if (yaml != null) {
+                        if (!yaml.getBoolean(id + ".block.options.unbreakable", false)) {
+                            //if the block is not unbreakable
+                            if (yaml.getBoolean(id + ".block.options.piston-breakable") && newLoc.getBlock().getType().isEmpty()) {
+                                //if the block can be broken by pistons
+                                destroyLoggedBlock(loc, true, null, null);
+                                if (debug >= 3) {
+                                    console.info(ChatColor.LIGHT_PURPLE + "Broke the custom block \"" + id + "\" because it was pushed by a piston and \"block.options.piston-breakable\" is true");
+                                }
                             }
                         } else {
-                            return true;
+                            if (debug >= 3) {
+                                console.info(ChatColor.LIGHT_PURPLE + "The custom block \"" + id + "\" was not broken by a piston because it is unbreakable");
+                            }
                         }
-                    } else if (yaml != null) {
-                        if (!yaml.getBoolean(id + ".block.options.cancel-piston-pull")) {
-                            moves.put(loc, newLoc);
-                            if (debug >= 3) {
-                                console.info(ChatColor.LIGHT_PURPLE + "Pulled the custom block \"" + id + "\" from " + locString + " to " + newLocString);
+
+                        if (pushing) {
+                            if (!yaml.getBoolean(id + ".block.options.cancel-piston-push")) {
+                                moves.put(loc, newLoc);
+                                if (debug >= 3) {
+                                    console.info(ChatColor.LIGHT_PURPLE + "Pushed the custom block \"" + id + "\" from " + locString + " to " + newLocString);
+                                }
+                            } else {
+                                return true;
                             }
                         } else {
-                            return true;
+                            if (!yaml.getBoolean(id + ".block.options.cancel-piston-pull")) {
+                                moves.put(loc, newLoc);
+                                if (debug >= 3) {
+                                    console.info(ChatColor.LIGHT_PURPLE + "Pulled the custom block \"" + id + "\" from " + locString + " to " + newLocString);
+                                }
+                            } else {
+                                return true;
+                            }
                         }
                     }
                 }
