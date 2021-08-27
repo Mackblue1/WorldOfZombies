@@ -784,8 +784,7 @@ public class CustomBlockHelper {
     }
 
     //handles custom blocks that are being pushed/pulled by a piston
-    public /*List<Block>*/boolean handleMovedBlocks(List<Block> blocks, BlockFace blockFace, boolean pushing) {
-        //List<Block> cancelled = new ArrayList<>();
+    public boolean handleMovedBlocks(List<Block> blocks, BlockFace blockFace, boolean pushing) {
         Map<Location, Location> moves = new HashMap<>();
         if (!blocks.isEmpty()) {
             for (Block block : blocks) {
@@ -798,7 +797,7 @@ public class CustomBlockHelper {
                     String newLocString = newLoc.getWorld().getName() + ", " + newLoc.getBlockX() + ", " + newLoc.getBlockY() + ", " + newLoc.getBlockZ();
 
                     if (pushing && yaml != null) {
-                        if (yaml.getBoolean(id + ".block.options.piston-breakable")) {
+                        if (yaml.getBoolean(id + ".block.options.piston-breakable") && newLoc.getBlock().getType().isEmpty()) {
                             destroyLoggedBlock(loc, true, null, null);
                             if (debug >= 3) {
                                 console.info(ChatColor.LIGHT_PURPLE + "Broke the custom block \"" + id + "\" because it was pushed by a piston and \"block.options.piston-breakable\" is true");
@@ -809,7 +808,6 @@ public class CustomBlockHelper {
                                 console.info(ChatColor.LIGHT_PURPLE + "Pushed the custom block \"" + id + "\" from " + locString + " to " + newLocString);
                             }
                         } else {
-                            //cancelled.add(block);
                             return true;
                         }
                     } else if (yaml != null) {
@@ -819,7 +817,6 @@ public class CustomBlockHelper {
                                 console.info(ChatColor.LIGHT_PURPLE + "Pulled the custom block \"" + id + "\" from " + locString + " to " + newLocString);
                             }
                         } else {
-                            //cancelled.add(block);
                             return true;
                         }
                     }
@@ -829,7 +826,6 @@ public class CustomBlockHelper {
                 moveLoggedBlock(entry.getKey(), entry.getValue());
             }
         }
-        //return cancelled;
         return false;
     }
 

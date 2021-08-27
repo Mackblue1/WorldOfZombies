@@ -58,7 +58,7 @@
         - Fixed a bug where custom block IDs wouldn't be properly removed after deleting their definition and reloading the plugin
         - Fixed a bug where the custom block  "demo-block"  would throw errors because of an incompatible  "sync-state"
         - Small bugfixes and improvements
-        - Known bug: sometimes custom blocks with active  "sync-states"  will cause an error about  "sync_states"  and  "disguised-data"  when being pulled by a piston with a slime block, even though the block appears to be disguised correctly
+        - Known bug: sometimes custom blocks with active  "sync-states"  will cause an error about  "sync_states"  and  "disguised-data"  when being moved by a piston, even though the block appears to be disguised correctly
 
 
 1.1.2     7/26/21
