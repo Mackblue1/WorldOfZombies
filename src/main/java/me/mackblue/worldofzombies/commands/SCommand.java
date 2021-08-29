@@ -47,13 +47,13 @@ public class SCommand implements CommandExecutor {
 
     //primary command handler that calls CommandHandler#handleCommand() and handles command error messages
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String s, String[] args) {
+    public boolean onCommand(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 0) {
             return info.displayInfo(sender);
         }
 
         try {
-            return commandHandler.handleCommand(sender, cmd, s, args);
+            return commandHandler.handleCommand(sender, cmd, alias, args);
         } catch (IllegalArgumentException e) {
             if (e.getMessage().equalsIgnoreCase("Invalid command")) {
                 sender.sendMessage(ChatColor.RED + "Invalid command! Use " + ChatColor.AQUA + "/woz info" + ChatColor.RED + " for a list of valid commands!");

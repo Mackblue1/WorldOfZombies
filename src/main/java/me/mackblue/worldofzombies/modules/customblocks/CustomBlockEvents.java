@@ -373,7 +373,7 @@ public class CustomBlockEvents implements Listener {
         customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-block.yml"), false, false, debug, "");
 
         File customItemsDir = new File(main.getDataFolder() + File.separator + "CustomItems");
-        if (customItemsDir.exists()) {
+        if (customItemsDir.exists() && customItemsDir.isDirectory()) {
             if (customItemsDir.list().length == 0) {
                 main.saveResource("CustomItems" + File.separator + "demo.yml", false);
                 if (debug >= 1) {

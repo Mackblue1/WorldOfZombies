@@ -2,6 +2,10 @@
 
 The primary custom plugin for the World of Zombies Minecraft server
 
+## Authors
+
+- Mackblue
+
 ### Latest Release Plugin Version
 
 1.1.2
@@ -16,10 +20,6 @@ The primary custom plugin for the World of Zombies Minecraft server
 
   - [ProtocolLib](https://www.spigotmc.org/resources/protocollib.1997/)
   - [NBTAPI](https://www.spigotmc.org/resources/nbt-api.7939/)
-
-## Authors
-
-- Mackblue
 
 ## Version History
 

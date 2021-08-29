@@ -58,6 +58,7 @@ public class SCommandTab implements TabCompleter {
             completions = new ArrayList<>(Arrays.asList("reload", "info", "database", "get", "item"));
             completions = getApplicableTabCompleter(args.length == 1 ? args[0] : "", completions, args[0], sender);
         }
+
         Collections.sort(completions);
         return completions;
     }

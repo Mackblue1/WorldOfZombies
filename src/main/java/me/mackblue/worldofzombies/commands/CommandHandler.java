@@ -22,13 +22,13 @@ public class CommandHandler {
     }
 
     //registers a new command without divisions based on arguments, like /woz reload
-    public void registerCommand(String s, SubCommand subCommand, String parametersSetup, String description) {
-        if (commandMap.containsKey(Collections.singletonList(s.toLowerCase()))) {
+    public void registerCommand(String name, SubCommand subCommand, String parametersSetup, String description) {
+        if (commandMap.containsKey(Collections.singletonList(name.toLowerCase()))) {
             throw new IllegalArgumentException("Command already exists!");
         }
 
-        commandMap.put(Collections.singletonList(s.toLowerCase()), subCommand);
-        commandInfoMap.put(Collections.singletonList(s.toLowerCase()), Arrays.asList(parametersSetup, description));
+        commandMap.put(Collections.singletonList(name.toLowerCase()), subCommand);
+        commandInfoMap.put(Collections.singletonList(name.toLowerCase()), Arrays.asList(parametersSetup, description));
     }
 
     //registers a new command with divisions based on arguments, like /woz database delete
@@ -44,7 +44,7 @@ public class CommandHandler {
     }
 
     //runs the correct subCommand based on the arguments of the original command
-    public boolean handleCommand(CommandSender sender, Command cmd, String s, String[] args) {
+    public boolean handleCommand(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 0) {
             return false;
         }
@@ -60,7 +60,7 @@ public class CommandHandler {
                 if (newArgs.length > 0) {
                     System.arraycopy(args, 1, newArgs, 0, newArgs.length);
                 }
-                return entry.getValue().subCommand(sender, cmd, s, newArgs);
+                return entry.getValue().subCommand(sender, cmd, args[0], newArgs);
             }
         }
         throw new IllegalArgumentException("Invalid command");
