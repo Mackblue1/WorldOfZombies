@@ -14,16 +14,10 @@ import java.util.logging.Logger;
 public class ReloadCommand implements SubCommand {
 
     private final WorldOfZombies main;
-    private final CustomBlockEvents customBlockEvents;
-    private final GetCustomItemCommand getCustomItemCommand;
-    private final SCommandTab sCommandTab;
     private final Logger console;
 
-    public ReloadCommand(WorldOfZombies main, CustomBlockEvents customBlockEvents, GetCustomItemCommand getCustomItemCommand, SCommandTab sCommandTab) {
+    public ReloadCommand(WorldOfZombies main) {
         this.main = main;
-        this.customBlockEvents = customBlockEvents;
-        this.getCustomItemCommand = getCustomItemCommand;
-        this.sCommandTab = sCommandTab;
         console = main.getLogger();
     }
 
@@ -31,19 +25,7 @@ public class ReloadCommand implements SubCommand {
     public boolean subCommand(CommandSender sender, Command cmd, String alias, String[] args) {
         if (sender.hasPermission("worldofzombies.command.reload")) {
 
-            main.reloadConfig();
-            main.createConfigs();
-            if (customBlockEvents != null) {
-                customBlockEvents.reload();
-            } else {
-                console.info(ChatColor.AQUA + "The custom block config was not reloaded because the custom blocks module is disabled");
-            }
-            if (getCustomItemCommand != null) {
-                getCustomItemCommand.reloadItems();
-                sCommandTab.reloadCompletions();
-            } else {
-                console.info(ChatColor.AQUA + "The \"/woz get\" command was not reloaded because the custom blocks module is disabled");
-            }
+            main.reload();
 
             if (sender instanceof Player) {
                 sender.sendMessage(ChatColor.GREEN + "World of Zombies plugin reloaded!");

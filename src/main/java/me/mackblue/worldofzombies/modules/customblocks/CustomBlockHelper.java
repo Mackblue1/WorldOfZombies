@@ -50,7 +50,7 @@ public class CustomBlockHelper {
     public void reload() {
         main.createConfigs();
         config = main.getConfig();
-        customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-block.yml"), false, false, debug, "");
+        customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-blocks.yml"), false, false, debug, "");
 
         debug = customBlockConfig.getInt("Global.debug", 0);
         recalculateChunkDisguisesBlacklist = customBlockConfig.getStringList("Global.recalculate-chunk-disguises-blacklist");
@@ -134,7 +134,7 @@ public class CustomBlockHelper {
 
                             BlockData disguisedData;
                             if (recalculateDisguises) {
-                                disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, secondBlock);
+                                disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc), id, secondBlock);
                                 if (disguisedData != null) {
                                     locationSection.set("disguised-block", disguisedData.getAsString());
                                     if (debug >= 4) {
@@ -149,7 +149,7 @@ public class CustomBlockHelper {
                                         console.info(ChatColor.BLUE + "The disguised BlockData for the block at " + locString + " was taken directly from the logged \"disguised-block\" because the logged and plugin's chunk reload ID matched");
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc).getBlockData().getAsString(), id, secondBlock);
+                                    disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc), id, secondBlock);
                                     if (debug >= 3) {
                                         console.warning(ChatColor.YELLOW + "The logged \"disguised-block\" for the block at " + locString + " was invalid or null, so it was recalculated");
                                     }
@@ -190,7 +190,10 @@ public class CustomBlockHelper {
     }
 
     //wrapper method for calculating a custom block's disguised BlockData, including sync-states and match-states
-    public BlockData createCustomDisguisedBlockData(String originalBlockDataString, String id, boolean secondBlock) {
+    public BlockData createCustomDisguisedBlockData(Block block, String id, boolean secondBlock) {
+        String originalBlockDataString = block.getBlockData().getAsString();
+        BlockData forcedActualData = createForcedBlockData(block, id, secondBlock);
+
         BlockData matchedData = checkMatchStates(originalBlockDataString, id, secondBlock);
         if (matchedData != null) {
             return matchedData;
@@ -275,9 +278,18 @@ public class CustomBlockHelper {
         String id = (String) getLoggedObjectFromLocation(loc, "id");
 
         if (id != null) {
+            /*YamlConfiguration yaml = idToDefinitionFile.get(id);
+            String particleString = yaml.getString(id + ".block.break-particles");
+            BlockData particleData;
+            if (particleString != null) {
+                particleString = (String) getLoggedObjectFromLocation(loc, "disguised-block");
+            }
+
+            particleData = Bukkit.createBlockData(particleString);*/
+
             if (!block.getType().isEmpty()) {
                 block.setType(Material.AIR);
-                //block.breakNaturally();
+                //loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, loc, 20, 0.5, 0.5, 0.5, DISGUISED DATA);
             }
 
             unlogBlock(loc, player);
@@ -471,6 +483,39 @@ public class CustomBlockHelper {
         return null;
     }
 
+    //sets the states of the actual block
+    public BlockData createForcedBlockData(Block block, String id, boolean secondBlock) {
+        YamlConfiguration yaml = idToDefinitionFile.get(id);
+
+        if (yaml != null) {
+            String originalBlockDataString = block.getBlockData().getAsString();
+            String path = "force-actual-states";
+            if (secondBlock) {
+                path += "2";
+            }
+
+            if (yaml.isConfigurationSection(id + ".block." + path)) {
+                ConfigurationSection section = yaml.getConfigurationSection(id + ".block." + path);
+                Set<String> states = section.getKeys(false);
+
+                for (String forceState : states) {
+
+                    if (originalBlockDataString.contains(forceState)) {
+                        String afterState = originalBlockDataString.substring(originalBlockDataString.indexOf(forceState));
+                        int stateEnd = afterState.indexOf("]");
+                        if (afterState.contains(",")) {
+                            if (afterState.indexOf(",") < stateEnd) {
+                                stateEnd = afterState.indexOf(",");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     public Object getLoggedObjectFromLocation(Location loc, String path) {
         return getLoggedObjectFromLocation(loc, path, null);
     }
@@ -528,7 +573,7 @@ public class CustomBlockHelper {
         if (block.getType().isEmpty()) {
             unlogBlock(loc, null);
         } else {
-            BlockData data = createCustomDisguisedBlockData(block.getBlockData().getAsString(), id, secondBlock);
+            BlockData data = createCustomDisguisedBlockData(block, id, secondBlock);
 
             if (data == null) {
                 return null;

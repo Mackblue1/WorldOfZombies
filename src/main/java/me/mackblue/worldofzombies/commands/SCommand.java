@@ -26,22 +26,18 @@ public class SCommand implements CommandExecutor {
     private final WorldOfZombies main;
     private final CommandHandler commandHandler;
     private final FileConfiguration config;
-    private final SCommandTab sCommandTab;
-    private final GetCustomItemCommand getCustomItemCommand;
 
     private final InfoCommand info;
 
     //registers specific subCommands using CommandHandler
-    public SCommand(WorldOfZombies main, CommandHandler commandHandler, CustomBlockEvents customBlockEvents, SCommandTab sCommandTab, GetCustomItemCommand getCustomItemCommand) {
+    public SCommand(WorldOfZombies main, CommandHandler commandHandler) {
         this.main = main;
         this.commandHandler = commandHandler;
         config = main.getConfig();
-        this.sCommandTab = sCommandTab;
-        this.getCustomItemCommand = getCustomItemCommand;
         info = new InfoCommand(main, config, commandHandler);
 
         commandHandler.registerCommand("info", info, "", "Displays information about this plugin");
-        commandHandler.registerCommand("reload", new ReloadCommand(main, customBlockEvents, getCustomItemCommand, sCommandTab), "", "Reloads the plugin's config files");
+        commandHandler.registerCommand("reload", new ReloadCommand(main), "", "Reloads the plugin's config files");
         commandHandler.registerMultiArgCommand(new ItemCommand(main), " (-yaml)", "Sends the player the NBT API string for the item in their main hand", "item", "nbt");
     }
 

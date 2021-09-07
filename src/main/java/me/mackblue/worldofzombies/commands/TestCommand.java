@@ -6,6 +6,7 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
 import com.destroystokyo.paper.entity.ai.*;
+import de.tr7zw.nbtapi.NBTItem;
 import me.mackblue.worldofzombies.WorldOfZombies;
 import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
 import org.bukkit.*;
@@ -23,6 +24,7 @@ import org.bukkit.inventory.ItemStack;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.logging.Logger;
 
 public class TestCommand implements CommandExecutor {
@@ -30,13 +32,11 @@ public class TestCommand implements CommandExecutor {
     private final WorldOfZombies main;
     private final Logger console;
     private final ProtocolManager pm;
-    private final CustomBlockEvents customBlockEvents;
 
-    public TestCommand(WorldOfZombies main, ProtocolManager pm, CustomBlockEvents customBlockEvents) {
+    public TestCommand(WorldOfZombies main, ProtocolManager pm) {
         this.main = main;
         this.console = main.getLogger();
         this.pm = pm;
-        this.customBlockEvents = customBlockEvents;
     }
 
     @Override
@@ -55,6 +55,7 @@ public class TestCommand implements CommandExecutor {
             //BlockData data = target.getBlockData();
             Material material = target.getType();
             ItemStack item = player.getInventory().getItemInMainHand();
+            NBTItem nbtItem = new NBTItem(item);
 
             PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
             packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK.createBlockData()));
@@ -65,9 +66,9 @@ public class TestCommand implements CommandExecutor {
                 e.printStackTrace();
             }
 
-            if (args.length >= 1) {
+            /*if (args.length >= 1) {
                 player.sendMessage("player has perm " + args[0] + ": " + player.hasPermission(args[0]));
-            }
+            }*/
 
             //player.sendMessage(ChatColor.GREEN + "chunk: " + chunk.getX() + ", " + chunk.getZ() + "   local target: " + (target.getX() & 0xF) + ", " + (target.getY() & 0xF) + ", " + (target.getZ() & 0xF));
 

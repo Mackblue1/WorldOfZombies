@@ -57,6 +57,7 @@ public class CustomBlockEvents implements Listener {
         chunkLoadListener();
         blockChangeListener();
         multiBlockChangeListener();
+        breakParticleListener();
     }
 
     //when a player places a block, log the location and disguised-block, and set the server block to actual-data if it exists in the definition
@@ -86,14 +87,14 @@ public class CustomBlockEvents implements Listener {
 
     //when a player clicks (damages) a block, break the block if its "instant-break" option is true
     @EventHandler(priority = EventPriority.HIGHEST)
-    public void clickBlockEvent(BlockDamageEvent event) {
+    public void instaBreakEvent(BlockDamageEvent event) {
         String id = (String) getCustomBlockHelper().getLoggedObjectFromLocation(event.getBlock().getLocation(), "id");
         if (id != null) {
             YamlConfiguration yaml = idToDefinitionFile.get(id);
             if (yaml != null && yaml.getBoolean(id + ".block.options.instant-break", false)) {
                 Player player = event.getPlayer();
-                event.setInstaBreak(true);
-                //helper.destroyLoggedBlock(event.getBlock().getLocation(), player.getGameMode() == GameMode.SURVIVAL, player, null);
+                //event.setInstaBreak(true);
+                helper.destroyLoggedBlock(event.getBlock().getLocation(), player.getGameMode() == GameMode.SURVIVAL, player, null);
             }
         }
     }
@@ -226,6 +227,11 @@ public class CustomBlockEvents implements Listener {
                         int chunkZ = event.getPacket().getIntegers().read(1);
                         Chunk chunk = player.getWorld().getChunkAt(chunkX, chunkZ);
 
+                        int delay = customBlockConfig.getInt("Global.chunk-load-delay", 5);
+                        if (delay < 0) {
+                            delay = 0;
+                        }
+
                         if (chunk.isLoaded()) {
                             Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(main, () -> {
                                 int blocks = helper.loadLoggedBlocksInChunk(player, chunk);
@@ -233,7 +239,7 @@ public class CustomBlockEvents implements Listener {
                                 if (debug >= 1 && blocks != 0) {
                                     console.info(ChatColor.DARK_GREEN + "Loaded " + blocks + " blocks in the chunk at " + chunkX + ", " + chunkZ + " in a custom MultiBlockChange packet by " + player.getName());
                                 }
-                            }, customBlockConfig.getLong("Global.chunk-load-delay", 10L));
+                            }, delay);
                         }
                     }
                 }
@@ -366,11 +372,27 @@ public class CustomBlockEvents implements Listener {
         );
     }
 
+    //listens for block breaking particles at the coordinates of a logged block, and modifies them to be the correct BlockData texture
+    public void breakParticleListener() {
+        pm.addPacketListener(
+                new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server./*WORLD_PARTICLES*/BLOCK_BREAK_ANIMATION) {
+                    // TODO: 8/31/2021 why does this never get recieved? is this listening for the wrong packet?
+                    @Override
+                    public void onPacketSending(PacketEvent event) {
+                        PacketContainer packet = event.getPacket();
+                        /*console.info(ChatColor.DARK_PURPLE + "got a packet");
+                        console.info(packet.getIntegers().readSafely(0) + "");
+                        console.info(packet.getBlockData().readSafely(0) + "");*/
+                    }
+                }
+        );
+    }
+
     //reloads the main and custom block configs, the custom block definition files, and the debug field
     public void reload() {
         main.createConfigs();
         config = main.getConfig();
-        customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-block.yml"), false, false, debug, "");
+        customBlockConfig = main.loadYamlFromFile(new File(main.getDataFolder(), "custom-blocks.yml"), false, false, debug, "");
 
         File customItemsDir = new File(main.getDataFolder() + File.separator + "CustomItems");
         if (customItemsDir.exists() && customItemsDir.isDirectory()) {

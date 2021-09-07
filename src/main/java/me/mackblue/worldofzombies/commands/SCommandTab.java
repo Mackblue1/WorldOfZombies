@@ -2,7 +2,6 @@ package me.mackblue.worldofzombies.commands;
 
 import me.mackblue.worldofzombies.WorldOfZombies;
 import me.mackblue.worldofzombies.modules.customblocks.CustomBlockEvents;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
@@ -31,18 +30,20 @@ public class SCommandTab implements TabCompleter {
     }
 
     public void reloadCompletions() {
-        customItems = new ArrayList<>(customBlockEvents.getIdToDefinitionFile().keySet());
+        if (customBlockEvents != null) {
+            customItems = new ArrayList<>(customBlockEvents.getIdToDefinitionFile().keySet());
+        }
     }
 
     //handles tab completion based on the length of the currently typed arguments
     @Override
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
-        if (args.length == 2 && args[0].equalsIgnoreCase("database")) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("database") && main.isCustomBlocksEnabled()) {
             completions = new ArrayList<>(Arrays.asList("delete", "clone", "confirm"));
             completions = getApplicableTabCompleter(args[1], completions, args[0], sender);
 
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("get")) {
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("get") && main.isCustomBlocksEnabled()) {
             completions = getApplicableTabCompleter(args[1], customItems, args[0], sender);
 
         } else if (args[0].equalsIgnoreCase("item")) {
@@ -56,6 +57,10 @@ public class SCommandTab implements TabCompleter {
 
         } else if (args.length <= 1) {
             completions = new ArrayList<>(Arrays.asList("reload", "info", "database", "get", "item"));
+            if (!main.isCustomBlocksEnabled()) {
+                completions.remove("database");
+                completions.remove("get");
+            }
             completions = getApplicableTabCompleter(args.length == 1 ? args[0] : "", completions, args[0], sender);
         }
 

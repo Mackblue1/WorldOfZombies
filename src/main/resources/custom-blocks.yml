@@ -8,11 +8,11 @@ Global:
   debug: 0
 
   #  The delay (in ticks) between a chunk being loaded and the custom blocks in that chunk being loaded and sent to players
-  #  Defaults to "10"
-  chunk-load-delay: 10
+  #  Defaults to "5", but potentially can be as low as "0" without issues
+  chunk-load-delay: 5
 
   #  A list of world names which will never recalculate block's "[location].disguised-block" , effectively ignoring the "chunk-reload-id" tag in a custom block log file
-  recalculate-chunk-disguises-blacklist: []
+  recalculate-chunk-disguises-world-blacklist: []
 
   #  Fixes a bug where vertical multi custom block (doors) would be inverted (main block on top, second block on bottom) by placing on a breakable multi block (tall grass, tall fern, etc)
   #  Defaults to "true"

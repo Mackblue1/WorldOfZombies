@@ -32,6 +32,8 @@ public class WorldOfZombies extends JavaPlugin {
     private SCommandTab sCommandTab;
     private GetCustomItemCommand getCustomItemCommand;
 
+    private boolean customBlocksEnabled = false;
+
     private File configFile;
     private FileConfiguration config;
     private File customBlockConfigFile;
@@ -51,7 +53,8 @@ public class WorldOfZombies extends JavaPlugin {
         console.info(ChatColor.GOLD + "     \\/  \\/ \\___/_____|");
         console.info("_______________________________________________________");
 
-        if (config.getBoolean("Modules.custom-blocks")) {
+        if (config.getBoolean("Modules.custom-blocks", true)) {
+            customBlocksEnabled = true;
             customBlockEvents = new CustomBlockEvents(this, pm);
             getServer().getPluginManager().registerEvents(customBlockEvents, this);
 
@@ -63,14 +66,15 @@ public class WorldOfZombies extends JavaPlugin {
             getCustomItemCommand = new GetCustomItemCommand(this, customBlockEvents);
             commandHandler.registerCommand("get", getCustomItemCommand, " [id] (amount)", "Gives the player the item specified in a custom block's \"item\" definition tag");
 
-            console.info(ChatColor.AQUA + "Loaded the custom block module");
+            console.info(ChatColor.AQUA + "Loaded the custom block module!");
         }
 
         sCommandTab = new SCommandTab(this, customBlockEvents);
-        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler, customBlockEvents, sCommandTab, getCustomItemCommand));
+        getCommand("worldofzombies").setExecutor(new SCommand(this, commandHandler));
         getCommand("worldofzombies").setTabCompleter(sCommandTab);
-        getCommand("woztest").setExecutor(new TestCommand(this, pm, customBlockEvents));
+        getCommand("woztest").setExecutor(new TestCommand(this, pm));
 
+        reload();
         console.info(ChatColor.GREEN + "World of Zombies custom plugin enabled successfully!");
         console.info("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾");
     }
@@ -78,6 +82,30 @@ public class WorldOfZombies extends JavaPlugin {
     @Override
     public void onDisable() {
         console.info(ChatColor.GREEN + "World of Zombies custom plugin disabled successfully!");
+    }
+
+    //reloads the config files and handles reloading of other classes
+    public void reload() {
+        reloadConfig();
+        createConfigs();
+
+        sCommandTab.reloadCompletions();
+
+        if (customBlockEvents != null) {
+            customBlockEvents.reload();
+        } else {
+            console.info(ChatColor.AQUA + "The custom block config was not reloaded because the custom blocks module is disabled");
+        }
+
+        if (getCustomItemCommand != null) {
+            getCustomItemCommand.reloadItems();
+        } else {
+            console.info(ChatColor.AQUA + "The \"/woz get\" command was not reloaded because the custom blocks module is disabled");
+        }
+    }
+
+    public boolean isCustomBlocksEnabled() {
+        return customBlocksEnabled;
     }
 
     //creates and loads core config files
@@ -101,9 +129,9 @@ public class WorldOfZombies extends JavaPlugin {
             console.severe(ChatColor.RED + "The main config file could not be loaded");
         }
 
-        customBlockConfigFile = new File(getDataFolder(), "custom-block.yml");
+        customBlockConfigFile = new File(getDataFolder(), "custom-blocks.yml");
         if (!customBlockConfigFile.exists()) {
-            saveResource("custom-block.yml", false);
+            saveResource("custom-blocks.yml", false);
         }
         customBlockConfig = new YamlConfiguration();
         try {

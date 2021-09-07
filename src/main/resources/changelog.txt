@@ -36,11 +36,13 @@
             - The base /woz command will only show if a player has the new permission  "worldofzombies.command.base"  which is a child of all other command permissions
 
     Changes:
+        - Renamed the custom block config file from  "custom-block.yml"  to  "custom-blocks.yml"
         - Renamed the custom block config option  "Global.packet-send-delay"  to  "Global.chunk-load-delay"
+            - Lowered the default value of this option from  "10"  to  "5"
         - Changed structure of all logged blocks (blocks will not auto update)
             - Custom block id is now stored in the tag  "[location].id"  , and the latest disguised-data is stored in the tag  "[location].disguised-block"
             - The new tag  "chunk-reload-id"  is how the plugin determines if it should recalculate blocks'  "[location].disguised-block"  when a chunk is loaded, so don't change it unless you want that data to be recalculated
-            - The new custom block config option  "recalculate-chunk-disguises-blacklist"  is a list of world names which will never recalculate block's  "[location].disguised-block"  , effectively ignoring the  "chunk-reload-id"  tag
+            - The new custom block config option  "recalculate-chunk-disguises-world-blacklist"  is a list of world names which will never recalculate block's  "[location].disguised-block"  , effectively ignoring the  "chunk-reload-id"  tag
         - Replaced the  "item"  ,  "nbt-item"  , and  "custom-item"  tags with a different format (check demo.yml for details)
             - MAKE SURE TO CHANGE THE ITEM FORMAT OR ITEM DROPS WILL NOT WORK
         - Replaced all "_" in block definition tags with "-"
