@@ -191,8 +191,8 @@ public class CustomBlockHelper {
 
     //wrapper method for calculating a custom block's disguised BlockData, including sync-states and match-states
     public BlockData createCustomDisguisedBlockData(Block block, String id, boolean secondBlock) {
+        createForcedBlockData(block, id, secondBlock);
         String originalBlockDataString = block.getBlockData().getAsString();
-        BlockData forcedActualData = createForcedBlockData(block, id, secondBlock);
 
         BlockData matchedData = checkMatchStates(originalBlockDataString, id, secondBlock);
         if (matchedData != null) {
@@ -452,9 +452,9 @@ public class CustomBlockHelper {
                 }
 
                 String value = afterState.substring((matchKey + "=").length(), stateEnd);
-                if (value.equals(matchValue)) {
+                if (value.equalsIgnoreCase(matchValue)) {
                     String disguisePath = "disguised-block";
-                    if (secondBlock) {
+                    if (secondBlock && section.contains(disguisePath + "2")) {
                         disguisePath += "2";
                     }
 
@@ -488,9 +488,9 @@ public class CustomBlockHelper {
         YamlConfiguration yaml = idToDefinitionFile.get(id);
 
         if (yaml != null) {
-            String originalBlockDataString = block.getBlockData().getAsString();
+            String blockDataString = block.getBlockData().getAsString();
             String path = "force-actual-states";
-            if (secondBlock) {
+            if (secondBlock && yaml.contains(path + "2")) {
                 path += "2";
             }
 
@@ -498,16 +498,60 @@ public class CustomBlockHelper {
                 ConfigurationSection section = yaml.getConfigurationSection(id + ".block." + path);
                 Set<String> states = section.getKeys(false);
 
+                int modified = 0;
+                StringBuilder forcedBlockDataStringBuilder = new StringBuilder(blockDataString);
                 for (String forceState : states) {
+                    String forceValue = section.getString(forceState);
 
-                    if (originalBlockDataString.contains(forceState)) {
-                        String afterState = originalBlockDataString.substring(originalBlockDataString.indexOf(forceState));
-                        int stateEnd = afterState.indexOf("]");
-                        if (afterState.contains(",")) {
-                            if (afterState.indexOf(",") < stateEnd) {
-                                stateEnd = afterState.indexOf(",");
+                    if (forcedBlockDataStringBuilder.indexOf(forceState) > 0) {
+                        //if the original string contains this state, get the full state
+                        String fullState = forcedBlockDataStringBuilder.substring(forcedBlockDataStringBuilder.indexOf(forceState));
+                        int localStateEnd = fullState.indexOf("]") + 1;
+                        if (fullState.contains(",")) {
+                            if (fullState.indexOf(",") < localStateEnd) {
+                                localStateEnd = fullState.indexOf(",") + 1;
+                                fullState = fullState.substring(0, localStateEnd);
                             }
                         }
+
+                        String value = fullState.substring((forceState + "=").length(), localStateEnd - 1);
+                        //if the value is already set to the forced value, do nothing
+                        if (!value.equalsIgnoreCase(forceValue)) {
+                            //if the original value is different from the forced value, remove the original value and add the new one to the end of the string
+                            modified++;
+                            int stateStart = forcedBlockDataStringBuilder.indexOf(fullState);
+                            forcedBlockDataStringBuilder.delete(stateStart, stateStart + fullState.length());
+
+                            if (forcedBlockDataStringBuilder.substring(forcedBlockDataStringBuilder.length() - 1).equals("]")) {
+                                forcedBlockDataStringBuilder.setCharAt(forcedBlockDataStringBuilder.length() - 1, ',');
+                            }
+                            forcedBlockDataStringBuilder.append(forceState).append("=").append(forceValue).append(",");
+                        }
+                    } else {
+                        //if the original string doesn't contain the forced state, remove the ending bracket and then add the state to the end of the string
+                        modified++;
+                        if (forcedBlockDataStringBuilder.substring(forcedBlockDataStringBuilder.length() - 1).equals("]")) {
+                            forcedBlockDataStringBuilder.setCharAt(forcedBlockDataStringBuilder.length() - 1, ',');
+                        }
+
+                        forcedBlockDataStringBuilder.append(forceState).append("=").append(forceValue).append(",");
+                    }
+
+                    if (forcedBlockDataStringBuilder.substring(forcedBlockDataStringBuilder.length() - 1).equals(",")) {
+                        forcedBlockDataStringBuilder.setCharAt(forcedBlockDataStringBuilder.length() - 1, ']');
+                    }
+                }
+
+                if (modified > 0) {
+                    try {
+                        BlockData forcedBlockData = Bukkit.createBlockData(forcedBlockDataStringBuilder.toString());
+                        block.setBlockData(forcedBlockData);
+                        if (debug >= 4) {
+                            console.info(ChatColor.BLUE + "Successfully modified " + modified + " states from \"" + path + "\" to the custom block \"" + id + "\"");
+                        }
+                        return forcedBlockData;
+                    } catch (IllegalArgumentException e) {
+                        console.severe(ChatColor.RED + "An error occurred while creating the BlockData for the \"" + path + "\" of the custom block \"" + id + "\"! Make sure the state names and values are valid!");
                     }
                 }
             }

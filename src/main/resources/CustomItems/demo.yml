@@ -186,3 +186,17 @@ no-press-button:
     #  Since "actual-sync-states" and "disguised-sync-states" both exist for this block, this section will never be checked
     sync-states:
       - powered
+
+always-open-trapdoor:
+  item: '{id:"minecraft:birch_trapdoor",Count:1b}'
+  block:
+    disguised-block: spruce_trapdoor
+
+    #  Functionality for "force-actual-states2" is the same as the base "force-actual-states", but it is only checked by the second block of a multi custom block
+    #  The format for this section is:  [state name]: [value], where the state name and value must be valid
+    #  This section will force these states onto the server-side block, but does not directly affect the disguised block
+    force-actual-states:
+      open: true
+
+    sync-states:
+      - open
