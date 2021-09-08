@@ -57,6 +57,7 @@
             - Also renamed the tags from  "IsCustomBlock"  and  "CustomBlock"  to  "IsCustomItem"  and  "CustomItem"
             - New NBT format is:  "WoZItem: { IsCustomBlock:[boolean], CustomItem: [item id] }"
         - Changed test command from  /bb  to  /woztest  (should not be used without knowing exactly what this command does)
+        - Apache Commons Lang3 and Apache Commons IO are now shaded into the plugin jar
 
     Bug Fixes:
         - Fixed a bug where custom block IDs wouldn't be properly removed after deleting their definition and reloading the plugin
