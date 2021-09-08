@@ -106,7 +106,8 @@ match:
 
     #  Changes the disguised BlockData of a block if its actual BlockData matches the states in this section
     #  States can optionally be nested inside each other (shown below) or not nested (especially for things like crops with only one BlockData tag)
-    match-states:
+    #  "actual-match-states" works the same as this, but it uses "actual-block" instead of "disguised-block" inside sections, and it changes the server-side block instead of the disguised block
+    disguised-match-states:
 
       #  The name of a section ("facing" in the top section here) is the name of the state to be checked
       facing:

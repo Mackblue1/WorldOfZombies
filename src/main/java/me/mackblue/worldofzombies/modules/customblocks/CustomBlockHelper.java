@@ -134,7 +134,7 @@ public class CustomBlockHelper {
 
                             BlockData disguisedData;
                             if (recalculateDisguises) {
-                                disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc), id, secondBlock);
+                                disguisedData = createCustomBlockData(world.getBlockAt(loc), id, true, secondBlock);
                                 if (disguisedData != null) {
                                     locationSection.set("disguised-block", disguisedData.getAsString());
                                     if (debug >= 4) {
@@ -149,7 +149,7 @@ public class CustomBlockHelper {
                                         console.info(ChatColor.BLUE + "The disguised BlockData for the block at " + locString + " was taken directly from the logged \"disguised-block\" because the logged and plugin's chunk reload ID matched");
                                     }
                                 } catch (IllegalArgumentException e) {
-                                    disguisedData = createCustomDisguisedBlockData(world.getBlockAt(loc), id, secondBlock);
+                                    disguisedData = createCustomBlockData(world.getBlockAt(loc), id, true, secondBlock);
                                     if (debug >= 3) {
                                         console.warning(ChatColor.YELLOW + "The logged \"disguised-block\" for the block at " + locString + " was invalid or null, so it was recalculated");
                                     }
@@ -189,17 +189,17 @@ public class CustomBlockHelper {
         return blockCount;
     }
 
-    //wrapper method for calculating a custom block's disguised BlockData, including sync-states and match-states
-    public BlockData createCustomDisguisedBlockData(Block block, String id, boolean secondBlock) {
+    //wrapper method for calculating a custom block's disguised or actual BlockData, including sync-states, match-states, and force-actual-states
+    public BlockData createCustomBlockData(Block block, String id, boolean disguised, boolean secondBlock) {
         createForcedBlockData(block, id, secondBlock);
-        String originalBlockDataString = block.getBlockData().getAsString();
 
-        BlockData matchedData = checkMatchStates(originalBlockDataString, id, secondBlock);
+        String originalBlockDataString = block.getBlockData().getAsString();
+        BlockData matchedData = checkMatchStates(originalBlockDataString, id, disguised, secondBlock);
         if (matchedData != null) {
             return matchedData;
         }
 
-        return createSyncedBlockData(originalBlockDataString, id, true, secondBlock);
+        return createSyncedBlockData(originalBlockDataString, id, disguised, secondBlock);
     }
 
     //handles logic for placing custom blocks - adapted from BlockPlaceEvent for compatibility with BlockMultiPlaceEvent
@@ -242,7 +242,7 @@ public class CustomBlockHelper {
 
             if (!yaml.contains(path)) {
                 if (actual != null) {
-                    BlockData actualData = createSyncedBlockData(block.getBlockData().getAsString(), id, false, secondBlock);
+                    BlockData actualData = createCustomBlockData(block, id, false, secondBlock);
                     if (actualData != null) {
                         block.setBlockData(actualData);
                     }
@@ -411,16 +411,17 @@ public class CustomBlockHelper {
         }
     }
 
-    //checks the match-states section and returns null if no conditions are met or the disguised-block inside the first matching state section
-    public BlockData checkMatchStates(String originalBlockDataString, String id, boolean secondBlock) {
+    //checks the disguised or actual match-states section and returns null if no conditions are met or the disguised-block inside the first matching state section
+    public BlockData checkMatchStates(String originalBlockDataString, String id, boolean disguised, boolean secondBlock) {
         YamlConfiguration yaml = idToDefinitionFile.get(id);
-        if (yaml != null && yaml.isConfigurationSection(id + ".block.match-states")) {
-            ConfigurationSection matchStatesSection = yaml.getConfigurationSection(id + ".block.match-states");
+        String path = disguised ? "disguised-match-states" : "actual-match-states";
+        if (yaml != null && yaml.isConfigurationSection(id + ".block." + path)) {
+            ConfigurationSection matchStatesSection = yaml.getConfigurationSection(id + ".block." + path);
             Set<String> states = matchStatesSection.getKeys(false);
 
             for (String state : states) {
                 if (matchStatesSection.isConfigurationSection(state)) {
-                    BlockData data = checkMatchStatesSection(originalBlockDataString, id, matchStatesSection.getConfigurationSection(state), secondBlock);
+                    BlockData data = checkMatchStatesSection(originalBlockDataString, id, matchStatesSection.getConfigurationSection(state), disguised, secondBlock);
                     if (data != null) {
                         return data;
                     }
@@ -431,8 +432,8 @@ public class CustomBlockHelper {
         return null;
     }
 
-    //recursive element of checkMatchStates to actually check the states
-    public BlockData checkMatchStatesSection(String originalBlockDataString, String id, ConfigurationSection section, boolean secondBlock) {
+    //recursive element of checkMatchStates() to actually check the states
+    public BlockData checkMatchStatesSection(String originalBlockDataString, String id, ConfigurationSection section, boolean disguised, boolean secondBlock) {
         if (section.contains("state")) {
             String matchKey = section.getName();
             //removes extra digits from the end of a state name
@@ -453,7 +454,8 @@ public class CustomBlockHelper {
 
                 String value = afterState.substring((matchKey + "=").length(), stateEnd);
                 if (value.equalsIgnoreCase(matchValue)) {
-                    String disguisePath = "disguised-block";
+                    String pathStart = disguised ? "disguised" : "actual";
+                    String disguisePath = pathStart + "-block";
                     if (secondBlock && section.contains(disguisePath + "2")) {
                         disguisePath += "2";
                     }
@@ -463,13 +465,13 @@ public class CustomBlockHelper {
                             BlockData unsyncData = Bukkit.createBlockData(section.getString(disguisePath));
                             return createSyncedBlockData(originalBlockDataString, id, unsyncData, section, true, secondBlock);
                         } catch (IllegalArgumentException e) {
-                            console.severe(ChatColor.RED + "Could not load the disguised BlockData in the \"match-states\" section of the custom block \"" + id + "\" because the BlockData at \"" + section.getCurrentPath() + "." + disguisePath + "\" is invalid");
+                            console.severe(ChatColor.RED + "Could not load the disguised BlockData in the \"" + pathStart + "-match-states\" section of the custom block \"" + id + "\" because the BlockData at \"" + section.getCurrentPath() + "." + disguisePath + "\" is invalid");
                             return null;
                         }
                     } else {
                         for (String state : section.getKeys(false)) {
                             if (section.isConfigurationSection(state)) {
-                                BlockData data = checkMatchStatesSection(originalBlockDataString, id, section.getConfigurationSection(state), secondBlock);
+                                BlockData data = checkMatchStatesSection(originalBlockDataString, id, section.getConfigurationSection(state), disguised, secondBlock);
                                 if (data != null) {
                                     return data;
                                 }
@@ -617,7 +619,7 @@ public class CustomBlockHelper {
         if (block.getType().isEmpty()) {
             unlogBlock(loc, null);
         } else {
-            BlockData data = createCustomDisguisedBlockData(block, id, secondBlock);
+            BlockData data = createCustomBlockData(block, id, true, secondBlock);
 
             if (data == null) {
                 return null;
