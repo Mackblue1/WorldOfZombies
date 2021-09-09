@@ -16,6 +16,12 @@ commands:
     usage: "§cUsage: /woz [command] [args]"
     permission: worldofzombies.command.base
     permission-message: "§cYou do not have permission to run this command!"
+  woztest:
+    description: Test random features (should not be used without knowing specifically what this does because its functionality changes often)
+    aliases: [wt]
+    usage: "§cUsage: /woztest"
+    permission: worldofzombies.command.*
+    permission-message: "§cYou do not have permission to run this command!"
 
 permissions:
   worldofzombies.*:

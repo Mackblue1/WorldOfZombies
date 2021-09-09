@@ -6,10 +6,6 @@ The primary custom plugin for the World of Zombies Minecraft server
 
 - Mackblue
 
-### Latest Release Plugin Version
-
-1.1.2
-
 ### Native API Version
 
 1.16.5

@@ -1,4 +1,4 @@
-1.2.0     _/__/21
+1.2.0     9/8/21
     New Features:
         - Added a custom block debug level 5 for messages that are extremely common will rarely be used for debugging (like a message saying a single block has been loaded)
         - Added the custom block config option  "Global.fix-inverted-multi-blocks"  , which fixes a bug where vertical multi custom blocks would be inverted if placed on a replaceable multi block (tall grass, tall fern, etc)
