@@ -4,7 +4,9 @@ import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.BlockPosition;
+import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
+import com.comphenix.protocol.wrappers.WrappedParticle;
 import com.destroystokyo.paper.entity.ai.*;
 import de.tr7zw.nbtapi.NBTItem;
 import me.mackblue.worldofzombies.WorldOfZombies;
@@ -50,25 +52,40 @@ public class TestCommand implements CommandExecutor {
             Player player = (Player) sender;
             World world = player.getWorld();
             Chunk chunk = player.getChunk();
+            Location loc = player.getLocation();
 
             Block target = player.getTargetBlock(10);
             //BlockData data = target.getBlockData();
             Material material = target.getType();
             ItemStack item = player.getInventory().getItemInMainHand();
-            NBTItem nbtItem = new NBTItem(item);
-
-            PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
-            packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK.createBlockData()));
-            packet.getBlockPositionModifier().writeSafely(0, new BlockPosition(target.getX(), target.getY(), target.getZ()));
-            try {
-                pm.sendServerPacket(player, packet);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+            if (item.getType() != Material.AIR) {
+                NBTItem nbtItem = new NBTItem(item);
             }
 
-            /*if (args.length >= 1) {
-                player.sendMessage("player has perm " + args[0] + ": " + player.hasPermission(args[0]));
-            }*/
+            long before = System.currentTimeMillis();
+            for (int i = 0; i < 10000; i++) {
+                PacketContainer packet = pm.createPacket(PacketType.Play.Server.WORLD_PARTICLES);
+                packet.getNewParticles().writeSafely(0, WrappedParticle.create(Particle.SQUID_INK, null));
+                packet.getDoubles().write(0, loc.getX()).write(1, loc.getY() + 2).write(2, loc.getZ());
+                packet.getIntegers().write(0, 20);
+
+                try {
+                    pm.sendServerPacket(player, packet);
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+            }
+            console.info(ChatColor.GREEN + "time to send 10k particle packets thru PL: " + (System.currentTimeMillis() - before));
+
+            before = System.currentTimeMillis();
+            for (int i = 0; i < 10000; i++) {
+                world.spawnParticle(Particle.SQUID_INK, loc.getX(), loc.getY() + 2, loc.getZ(), 20);
+            }
+            console.info(ChatColor.GREEN + "time to send 10k particle packets thru spigot API: " + (System.currentTimeMillis() - before));
+
+            /*PacketContainer packet = pm.createPacket(PacketType.Play.Server.BLOCK_CHANGE);
+            packet.getBlockData().writeSafely(0, WrappedBlockData.createData(Material.DIAMOND_BLOCK.createBlockData()));
+            packet.getBlockPositionModifier().writeSafely(0, new BlockPosition(target.getX(), target.getY(), target.getZ()));*/
 
             //player.sendMessage(ChatColor.GREEN + "chunk: " + chunk.getX() + ", " + chunk.getZ() + "   local target: " + (target.getX() & 0xF) + ", " + (target.getY() & 0xF) + ", " + (target.getZ() & 0xF));
 

@@ -8,12 +8,15 @@ import me.mackblue.worldofzombies.util.MultiBlockChangeWrap;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.PistonMoveReaction;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.*;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
@@ -237,26 +240,25 @@ public class CustomBlockHelper {
             File file = new File(main.getDataFolder() + File.separator + "BlockDatabase" + File.separator + world.getName(), "chunk." + chunk.getX() + "." + chunk.getZ() + ".yml");
             YamlConfiguration yaml = main.loadYamlFromFile(file, true, false, debug, "");
             if (yaml == null) {
+                console.severe(ChatColor.RED + "An error occurred while loading or creating the database file for the chunk at " + chunk.getX() + ", " + chunk.getZ());
                 return;
             }
 
-            if (!yaml.contains(path)) {
-                if (actual != null) {
-                    BlockData actualData = createCustomBlockData(block, id, false, secondBlock);
-                    if (actualData != null) {
-                        block.setBlockData(actualData);
-                    }
-                } else if (debug >= 3) {
-                    console.warning(ChatColor.YELLOW + "Did not change the server-side block for the custom block \"" + id + "\" at " + locString + " because its source \"" + actualPathEnd + "\" is empty");
+            if (actual != null) {
+                BlockData actualData = createCustomBlockData(block, id, false, secondBlock);
+                if (actualData != null) {
+                    block.setBlockData(actualData);
                 }
+            } else if (debug >= 3) {
+                console.warning(ChatColor.YELLOW + "Did not change the server-side block for the custom block \"" + id + "\" at " + locString + " because its source \"" + actualPathEnd + "\" is empty");
+            }
 
-                yaml.set(path, id);
-                if (secondBlock) {
-                    yaml.set(path.substring(0, path.length() - "id".length()) + "secondBlock", true);
-                }
-                if (debug >= 2) {
-                    console.info(ChatColor.AQUA + player.getName() + " added the custom block \"" + id + "\" at " + locString);
-                }
+            yaml.set(path, id);
+            if (secondBlock) {
+                yaml.set(path.substring(0, path.length() - "id".length()) + "secondBlock", true);
+            }
+            if (debug >= 2) {
+                console.info(ChatColor.AQUA + player.getName() + " added the custom block \"" + id + "\" at " + locString);
             }
 
             try {
@@ -273,34 +275,67 @@ public class CustomBlockHelper {
     }
 
     //wrapper method for destroying a custom block: un-logs the block, drops custom items, plays custom break sound, and spawns custom break particles
-    public void destroyLoggedBlock(Location loc, boolean dropItems, Player player, List<Item> originalDrops) {
+    public void destroyLoggedBlock(Event event, boolean cancelEvent, Location loc, boolean dropItems, Player player, List<Item> originalDrops, boolean destroyEffects) {
         Block block = loc.getWorld().getBlockAt(loc);
         String id = (String) getLoggedObjectFromLocation(loc, "id");
+        BlockData realBlockData = block.getBlockData();
 
         if (id != null) {
-            /*YamlConfiguration yaml = idToDefinitionFile.get(id);
-            String particleString = yaml.getString(id + ".block.break-particles");
-            BlockData particleData;
-            if (particleString != null) {
-                particleString = (String) getLoggedObjectFromLocation(loc, "disguised-block");
+            if (cancelEvent && event instanceof Cancellable) {
+                ((Cancellable) event).setCancelled(true);
             }
 
-            particleData = Bukkit.createBlockData(particleString);*/
-
+            //make sure the block is air
             if (!block.getType().isEmpty()) {
                 block.setType(Material.AIR);
-                //loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, loc, 20, 0.5, 0.5, 0.5, DISGUISED DATA);
+            }
+            //custom particles and sounds
+            if (destroyEffects) {
+                YamlConfiguration yaml = idToDefinitionFile.get(id);
+                if (yaml != null) {
+
+                    try {
+                        Object secondBlockObj = getLoggedObjectFromLocation(loc, "secondBlock", false);
+                        boolean secondBlock = secondBlockObj != null && (boolean) secondBlockObj;
+                        String particleDataString = secondBlock ? yaml.getString(id + ".block.destroy-particles2") : yaml.getString(id + ".block.destroy-particles");
+
+                        if (particleDataString == null) {
+                            particleDataString = (String) getLoggedObjectFromLocation(loc, "disguised-block");
+                            if (particleDataString == null) {
+                                particleDataString = realBlockData.getAsString();
+                            }
+                        }
+                        BlockData particleData = Bukkit.createBlockData(particleDataString);
+
+
+                        String soundString = yaml.getString(id + ".block.destroy-sound");
+                        Sound sound = null;
+                        if (!secondBlock) {
+                            if (soundString == null) {
+                                sound = particleData.getSoundGroup().getBreakSound();
+                            } else {
+                                sound = Sound.valueOf(soundString);
+                            }
+                        }
+
+                        loc.getWorld().spawnParticle(Particle.BLOCK_CRACK, loc.getX() + 0.5, loc.getY() + 0.5, loc.getZ() + 0.5, 50, 0.2, 0.2, 0.2, particleData);
+                        if (sound != null) {
+                            loc.getWorld().playSound(loc, sound, 1.0f, 1.0f);
+                        }
+                    } catch (IllegalArgumentException e) {
+                        console.severe(ChatColor.RED + "An error occurred while creating the break particles or break sound for the custom block \"" + id + "\"! Make sure its \"destroy-particles\" and \"destroy-sound\" are valid");
+                    }
+                } else {
+                    console.severe(ChatColor.RED + "Could not load the break particles or sounds for the custom block \"" + id + "\" because its source file does not exist");
+                }
             }
 
             unlogBlock(loc, player);
 
+            //drop items
             if (dropItems) {
                 spawnCustomBlockDrops(id, loc, originalDrops, player);
             }
-
-            //play custom break sound
-
-            //spawn custom break particles
         }
     }
 
@@ -553,7 +588,7 @@ public class CustomBlockHelper {
                         }
                         return forcedBlockData;
                     } catch (IllegalArgumentException e) {
-                        console.severe(ChatColor.RED + "An error occurred while creating the BlockData for the \"" + path + "\" of the custom block \"" + id + "\"! Make sure the state names and values are valid!");
+                        console.severe(ChatColor.RED + "An error occurred while creating the BlockData for the \"" + path + "\" of the custom block \"" + id + "\"! Make sure the state names and values are valid");
                     }
                 }
             }
@@ -617,6 +652,7 @@ public class CustomBlockHelper {
         Block block = loc.getWorld().getBlockAt(loc);
 
         if (block.getType().isEmpty()) {
+            console.info(ChatColor.DARK_PURPLE + "PACKET HANDLER unlogging block at " + loc);
             unlogBlock(loc, null);
         } else {
             BlockData data = createCustomBlockData(block, id, true, secondBlock);
@@ -890,9 +926,15 @@ public class CustomBlockHelper {
                     if (yaml != null) {
                         if (!yaml.getBoolean(id + ".block.options.unbreakable", false)) {
                             //if the block is not unbreakable
+                            if (block.getPistonMoveReaction() == PistonMoveReaction.BREAK) {
+                                destroyLoggedBlock(null, false, loc, true, null, null, false);
+                                if (debug >= 3) {
+                                    console.info(ChatColor.LIGHT_PURPLE + "Destroyed the custom block \"" + id + "\" because the server-side block is breakable by pistons");
+                                }
+                            }
                             if (yaml.getBoolean(id + ".block.options.piston-breakable") && newLoc.getBlock().getType().isEmpty()) {
-                                //if the block can be broken by pistons
-                                destroyLoggedBlock(loc, true, null, null);
+                                //if the block (normally not broken) can be broken by pistons
+                                destroyLoggedBlock(null, false, loc, true, null, null, false);
                                 if (debug >= 3) {
                                     console.info(ChatColor.LIGHT_PURPLE + "Broke the custom block \"" + id + "\" because it was pushed by a piston and \"block.options.piston-breakable\" is true");
                                 }

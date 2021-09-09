@@ -5,6 +5,7 @@ import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.*;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
+import com.destroystokyo.paper.event.block.BlockDestroyEvent;
 import me.mackblue.worldofzombies.util.MultiBlockChangeWrap;
 import me.mackblue.worldofzombies.WorldOfZombies;
 import org.apache.commons.io.FileUtils;
@@ -15,8 +16,8 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.*;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityExplodeEvent;
@@ -57,18 +58,17 @@ public class CustomBlockEvents implements Listener {
         chunkLoadListener();
         blockChangeListener();
         multiBlockChangeListener();
-        breakParticleListener();
     }
 
     //when a player places a block, log the location and disguised-block, and set the server block to actual-data if it exists in the definition
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void blockPlaceEvent(BlockPlaceEvent event) {
         //console.info(ChatColor.DARK_PURPLE + "BPE");
         helper.placeCustomBlock(event.getBlock(), event.getItemInHand(), event.getPlayer(), false);
     }
 
     //very similar to BlockPlaceEvent handler, but logs multiple placed blocks instead of just one
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void multiBlockPlaceEvent(BlockMultiPlaceEvent event) {
         //console.info(ChatColor.DARK_PURPLE + "MBPE");
         List<BlockState> replacedBlockStates = event.getReplacedBlockStates();
@@ -86,7 +86,7 @@ public class CustomBlockEvents implements Listener {
     }
 
     //when a player clicks (damages) a block, break the block if its "instant-break" option is true
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void instaBreakEvent(BlockDamageEvent event) {
         String id = (String) getCustomBlockHelper().getLoggedObjectFromLocation(event.getBlock().getLocation(), "id");
         if (id != null) {
@@ -94,7 +94,11 @@ public class CustomBlockEvents implements Listener {
             if (yaml != null && yaml.getBoolean(id + ".block.options.instant-break", false)) {
                 Player player = event.getPlayer();
                 //event.setInstaBreak(true);
-                helper.destroyLoggedBlock(event.getBlock().getLocation(), player.getGameMode() == GameMode.SURVIVAL, player, null);
+                //console.info(ChatColor.GOLD + "insta");
+
+                Object secondBlockObj = helper.getLoggedObjectFromLocation(event.getBlock().getLocation(), "secondBlock", false);
+                boolean secondBlock = secondBlockObj != null && (boolean) secondBlockObj;
+                helper.destroyLoggedBlock(event, true, event.getBlock().getLocation(), player.getGameMode() == GameMode.SURVIVAL && !secondBlock, player, null, true);
             }
         }
     }
@@ -113,35 +117,59 @@ public class CustomBlockEvents implements Listener {
     }
 
     //handler to check for a player breaking an unbreakable block
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void blockBreakEvent(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        Location loc = event.getBlock().getLocation();
+        Block block = event.getBlock();
+        Location loc = block.getLocation();
+        //console.info(ChatColor.GOLD + "block break");
 
         String id = (String) helper.getLoggedObjectFromLocation(loc, "id");
         YamlConfiguration yaml = idToDefinitionFile.get(id);
         if (yaml != null) {
             if (yaml.getBoolean(id + ".block.options.unbreakable", false)) {
-                if (player.getGameMode() != GameMode.CREATIVE) {
+                if (player.getGameMode() == GameMode.SURVIVAL) {
                     event.setCancelled(true);
                     if (debug >= 3) {
                         console.info(ChatColor.BLUE + player.getName()  + " was not able to break the custom block \"" + id + "\" because it is unbreakable");
+                        return;
                     }
                 }
             }
         }
+
+        //fix for blocks not being correctly destroyed sometimes
+        if (id != null) {
+            //console.info(ChatColor.DARK_PURPLE + "cancelled BBE and spawning new BDIE");
+            event.setCancelled(true);
+            blockDropItemEvent(new BlockDropItemEvent(block, block.getState(), player, new ArrayList<>()));
+        }
     }
 
     //custom block dropping logic based on options in a custom block's "block.drops" definition section
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void blockDropItemEvent(BlockDropItemEvent event) {
         Player player = event.getPlayer();
         Location loc = event.getBlock().getLocation();
         List<Item> originalDrops = event.getItems();
-        //console.info(ChatColor.DARK_PURPLE + "bdie");
+        //console.info(ChatColor.GOLD + "drop items");
 
-        helper.destroyLoggedBlock(loc, player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty(), player, originalDrops);
+        Object secondBlockObj = helper.getLoggedObjectFromLocation(loc, "secondBlock", false);
+        boolean secondBlock = secondBlockObj != null && (boolean) secondBlockObj;
+        helper.destroyLoggedBlock(event, false, loc, (player.getGameMode() == GameMode.SURVIVAL || !originalDrops.isEmpty()) && !secondBlock, player, originalDrops, true);
     }
+
+    //block dropping/breaking logic for blocks broken indirectly (block under them is broken, multi block break)
+    @EventHandler
+    public void blockDestroyEvent(BlockDestroyEvent event) {
+        Location loc = event.getBlock().getLocation();
+        //console.info(ChatColor.GOLD + "destroy");
+
+        Object secondBlockObj = helper.getLoggedObjectFromLocation(loc, "secondBlock", false);
+        boolean secondBlock = secondBlockObj != null && (boolean) secondBlockObj;
+        helper.destroyLoggedBlock(event, true, loc, !secondBlock, null, null, event.playEffect());
+    }
+
 
     //handles custom block drops during explosions
     @EventHandler
@@ -162,7 +190,7 @@ public class CustomBlockEvents implements Listener {
                         //removing block from explosion and setting to air works, but is there a better way to remove original exploded block drops?
 
                         if (yield > 0) {
-                            helper.destroyLoggedBlock(loc, Math.random() < yield, null, null);
+                            helper.destroyLoggedBlock(event, false, loc, Math.random() < yield, null, null, false);
                         }
                     } else {
                         if (debug >= 3) {
@@ -176,7 +204,7 @@ public class CustomBlockEvents implements Listener {
 
     //note: event.getBlocks() returns an immutable list, so how can the blocks be treated like obsidian and not moved?
     //calls handleMovedBlocks() to do most of the work, and cancels the event if one or more blocks has the config option "cancel-piston
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void pistonExtendEvent(BlockPistonExtendEvent event) {
         if (helper.handleMovedBlocks(event.getBlocks(), event.getDirection(), true)) {
             event.setCancelled(true);
@@ -184,7 +212,7 @@ public class CustomBlockEvents implements Listener {
     }
 
     //calls handleMovedBlocks() to check if the event should be cancelled, and cancels if it should
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void pistonRetractEvent(BlockPistonRetractEvent event) {
         if (helper.handleMovedBlocks(event.getBlocks(), event.getDirection(), false)) {
             event.setCancelled(true);
@@ -192,7 +220,7 @@ public class CustomBlockEvents implements Listener {
     }
 
     //when water/lava flows into a custom block to break it, destroy the block unless the block's "disable-fluid-destroy" is true
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler
     public void liquidFlowEvent(BlockFromToEvent event) {
         Block block = event.getToBlock();
         String id = (String) helper.getLoggedObjectFromLocation(block.getLocation(), "id");
@@ -201,7 +229,7 @@ public class CustomBlockEvents implements Listener {
             if (yaml != null) {
                 if (!yaml.getBoolean(id + ".block.options.disable-fluid-destroy", false)) {
                     if (!yaml.getBoolean(id + ".block.options.unbreakable", false)) {
-                        helper.destroyLoggedBlock(block.getLocation(), true, null, null);
+                        helper.destroyLoggedBlock(event, false, block.getLocation(), true, null, null, false);
                     } else {
                         event.setCancelled(true);
                         if (debug >= 3) {
@@ -250,7 +278,7 @@ public class CustomBlockEvents implements Listener {
     //listens for BlockChange packets and if its position is logged, edits the packet to contain the logged disguised BlockData
     public void blockChangeListener() {
         pm.addPacketListener(
-                new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server.BLOCK_CHANGE) {
+                new PacketAdapter(main, PacketType.Play.Server.BLOCK_CHANGE) {
 
                     @Override
                     public void onPacketSending(PacketEvent event) {
@@ -306,7 +334,7 @@ public class CustomBlockEvents implements Listener {
     //listens for MultiBlockChange packets edits the packet to contain the logged disguised BlockData for any included logged blocks
     public void multiBlockChangeListener() {
         pm.addPacketListener(
-                new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
+                new PacketAdapter(main, PacketType.Play.Server.MULTI_BLOCK_CHANGE) {
 
                     @Override
                     public void onPacketSending(PacketEvent event) {
@@ -367,22 +395,6 @@ public class CustomBlockEvents implements Listener {
                         if (debug >= 1 && blocks != 0) {
                             console.info(ChatColor.DARK_GREEN + "Edited the BlockData of " + blocks + " blocks in a MultiBlockChange packet in the chunk at " + subChunkPos.getX() + ", " + subChunkPos.getZ() + " by " + player.getName());
                         }
-                    }
-                }
-        );
-    }
-
-    //listens for block breaking particles at the coordinates of a logged block, and modifies them to be the correct BlockData texture
-    public void breakParticleListener() {
-        pm.addPacketListener(
-                new PacketAdapter(main, ListenerPriority.HIGHEST, PacketType.Play.Server./*WORLD_PARTICLES*/BLOCK_BREAK_ANIMATION) {
-                    // TODO: 8/31/2021 why does this never get recieved? is this listening for the wrong packet?
-                    @Override
-                    public void onPacketSending(PacketEvent event) {
-                        PacketContainer packet = event.getPacket();
-                        /*console.info(ChatColor.DARK_PURPLE + "got a packet");
-                        console.info(packet.getIntegers().readSafely(0) + "");
-                        console.info(packet.getBlockData().readSafely(0) + "");*/
                     }
                 }
         );

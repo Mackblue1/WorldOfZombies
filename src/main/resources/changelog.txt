@@ -1,4 +1,4 @@
-1.1.3     _/__/21
+1.2.0     _/__/21
     New Features:
         - Added a custom block debug level 5 for messages that are extremely common will rarely be used for debugging (like a message saying a single block has been loaded)
         - Added the custom block config option  "Global.fix-inverted-multi-blocks"  , which fixes a bug where vertical multi custom blocks would be inverted if placed on a replaceable multi block (tall grass, tall fern, etc)
@@ -37,6 +37,9 @@
             - See the custom block  "always-open-trapdoor"  for more details
         - Added a new command tab system that only shows the commands that are available to a player
             - The base /woz command will only show if a player has the new permission  "worldofzombies.command.base"  which is a child of all other command permissions
+        - Added the optional definition option  "destroy-particles"  ,  "destroy-particles2"  , and  "destroy-sound"
+            - These options are overrides for the normal particle and sound system, which defaults to the particles and sounds of the currently logged disguised BlockData for a block
+            - See the custom block  "custom-break-effects"  for more details
 
     Changes:
         - Renamed the custom block config file from  "custom-block.yml"  to  "custom-blocks.yml"
@@ -65,6 +68,7 @@
         - Fixed a bug where the custom block  "demo-block"  would throw errors because of an incompatible  "sync-state"
         - Small bugfixes and improvements
         - Known bug: sometimes custom blocks with active  "sync-states"  will cause an error about  "sync_states"  and  "disguised-data"  when being moved by a piston, even though the block appears to be disguised correctly
+        - Known bug: broken blocks without  "instant-break"  or blocks broken in creative mode will spawn the particles for the server-side block in addition to custom particles
 
 
 1.1.2     7/26/21

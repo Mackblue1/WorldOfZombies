@@ -7,7 +7,6 @@ website: https://github.com/Mackblue1/WorldOfZombies
 api-version: 1.16
 depend:
   - ProtocolLib
-#  - LibsDisguises
   - NBTAPI
 
 commands:
@@ -16,12 +15,6 @@ commands:
     aliases: [woz]
     usage: "§cUsage: /woz [command] [args]"
     permission: worldofzombies.command.base
-    permission-message: "§cYou do not have permission to run this command!"
-  woztest:
-    description: Test random features (should not be used without knowing specifically what this does because its functionality changes often)
-    aliases: [wt]
-    usage: "§cUsage: /woztest"
-    permission: worldofzombies.command.*
     permission-message: "§cYou do not have permission to run this command!"
 
 permissions:

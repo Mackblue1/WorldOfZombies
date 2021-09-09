@@ -156,7 +156,7 @@ custom-door:
       #  This will disguise the second placed block, which is the extra block that is placed next to the main block, like the head of a bed or top of a door
       disguised-block2: iron_block
 
-      match-states:
+      disguised-match-states:
         facing:
             state: north
             hinge:
@@ -201,3 +201,24 @@ always-open-trapdoor:
 
     sync-states:
       - open
+
+custom-break-effects:
+  item: '{id:"minecraft:iron_door",Count:1b}'
+  block:
+    disguised-block: glass
+    disguised-block2: iron_block
+
+    #  This overrides the default break particles for a single custom block or for the bottom half (main block) of a multi custom block
+    #  This must be a valid BlockData string, like the "disguised-block" option
+    destroy-particles: tnt
+
+    #  This overrides the default break particles for the top half (second block) of a multi custom block
+    #  This must be a valid BlockData string, like the "disguised-block" option
+    destroy-particles2: diamond_block
+
+    #  This overrides the default breaking sound for a custom block
+    #  This must be a valid Spigot Sound in all caps (see https://purpur.pl3x.net/javadoc/org/bukkit/Sound.html for the list of valid options)
+    destroy-sound: BLOCK_NOTE_BLOCK_PLING
+
+    options:
+      instant-break: true
